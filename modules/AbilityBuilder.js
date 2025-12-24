@@ -92,10 +92,12 @@ export class AbilityBuilder {
             return opt;
         };
 
-        // 1. Triggers
+        // 1. Triggers (Fixed Crash here)
         this.ui.trigger.innerHTML = '';
         TRIGGERS.forEach(t => {
-            this.ui.trigger.appendChild(createOpt(t.id, t.name.en, { desc: t.description.en }));
+            // Safely access description
+            const desc = t.description?.en || ""; 
+            this.ui.trigger.appendChild(createOpt(t.id, t.name.en, { desc: desc }));
         });
 
         // 2. Conditions
@@ -126,9 +128,19 @@ export class AbilityBuilder {
             }));
         });
 
-        // 4. Targets
+        // 4. Targets (Added Tribal Targets support)
         this.ui.target.innerHTML = '';
         TARGETS.forEach(t => this.ui.target.appendChild(createOpt(t.id, t.name.en)));
+        
+        // Append Tribal Targets group if exists
+        if(TRIBAL_TARGETS && TRIBAL_TARGETS.length > 0) {
+            const grpTribeTarg = document.createElement('optgroup');
+            grpTribeTarg.label = "Tribal";
+            TRIBAL_TARGETS.forEach(t => {
+                grpTribeTarg.appendChild(createOpt(t.id, t.name.en, { reqTribe: t.requiresParam }));
+            });
+            this.ui.target.appendChild(grpTribeTarg);
+        }
 
         // 5. Context Helpers
         const tribes = gm.getTribes();
@@ -195,14 +207,63 @@ export class AbilityBuilder {
 
     updatePreview() {
         const data = this.scrapeData();
-        // (Simplified preview generation for brevity, logic remains same as before)
         let text = "";
+        
+        // Trigger
         if (data.flavorName) text += `<b>${data.flavorName}</b>: `;
+        else {
+            const trigName = TRIGGERS.find(t => t.id === data.trigger)?.name.en || "";
+            if(data.trigger !== 'passive') text += `<b>${trigName}:</b> `;
+        }
         
+        // Condition
+        if (data.condition) {
+            let condText = GENERIC_CONDITIONS.find(c => c.id === data.condition)?.name.en || "";
+            if(!condText) {
+                condText = TRIBAL_CONDITIONS.find(c => c.id === data.condition)?.name.en || "";
+                if(data.conditionParam) {
+                    const tName = gm.getTribes().find(t => t.id === data.conditionParam)?.name || "Tribe";
+                    condText = condText.replace('[Tribe]', tName);
+                }
+            }
+            text += `<i>${condText},</i> `;
+        }
+
+        // Effect
         const effDef = EFFECTS.find(e => e.id === data.effect);
-        text += effDef ? effDef.name.en : "Do Effect";
+        let effText = effDef ? effDef.name.en : "Do Effect";
         
-        if(effDef && effDef.requiresValue) text += ` ${data.value}`;
+        if(effText.includes("X")) effText = effText.replace("X", data.value);
+        if(effDef?.requiresValue && !effText.includes(data.value)) effText += ` ${data.value}`;
+        
+        // Substitutions
+        if(data.keyword) {
+            const kw = KEYWORDS.find(k => k.id === data.keyword)?.name || "";
+            effText = effText.replace("Keyword", kw); // Naive replace
+            if(effDef?.id === 'give_keyword') effText = `Give ${kw}`;
+        }
+        if(data.tokenData) {
+            effText = `Summon a ${data.tokenData.attack}/${data.tokenData.health} ${data.tokenData.name}`;
+        }
+        if(data.effectTribe) {
+            const tName = gm.getTribes().find(t => t.id === data.effectTribe)?.name || "Tribe";
+            effText = effText.replace('[Tribe]', tName);
+        }
+
+        text += effText;
+        
+        // Target
+        const targDef = TARGETS.find(t => t.id === data.target);
+        const tribeTargDef = TRIBAL_TARGETS.find(t => t.id === data.target);
+        
+        if (targDef && targDef.id !== 'none') {
+            text += ` to ${targDef.name.en}`;
+        } else if (tribeTargDef) {
+            let tName = tribeTargDef.name.en;
+            // Tribal targets usually don't have a param selector in THIS specific UI implementation yet (TODO improvement)
+            // But we can just show the text for now
+            text += ` to ${tName}`;
+        }
         
         this.ui.previewText.innerHTML = text + ".";
     }

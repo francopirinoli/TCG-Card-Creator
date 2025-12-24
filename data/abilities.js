@@ -5,19 +5,63 @@
 
 // --- 1. TRIGGERS ---
 export const TRIGGERS = [
-    { id: "on_play", name: { en: "Battlecry", es: "Grito de Batalla" }, costMultiplier: 1.0 },
-    { id: "on_death", name: { en: "Deathrattle", es: "Último Aliento" }, costMultiplier: 0.8 },
-    { id: "on_end_turn", name: { en: "End of Turn", es: "Al final del turno" }, costMultiplier: 1.2 },
-    { id: "on_start_turn", name: { en: "Start of Turn", es: "Al inicio del turno" }, costMultiplier: 1.3 },
-    { id: "on_damage_taken", name: { en: "Enrage", es: "Enfurecer" }, costMultiplier: 1.1 },
-    { id: "on_attack", name: { en: "On Attack", es: "Al Atacar" }, costMultiplier: 1.1 },
-    { id: "on_spell_cast", name: { en: "Spellburst", es: "Al lanzar hechizo" }, costMultiplier: 1.2 },
-    { id: "combo", name: { en: "Combo", es: "Combo" }, costMultiplier: 0.9 },
-    { id: "passive", name: { en: "Passive", es: "Pasivo" }, costMultiplier: 1.0 }
+    { 
+        id: "on_play", 
+        name: { en: "Battlecry", es: "Grito de Batalla" }, 
+        description: { en: "Triggered when you play this card from your hand.", es: "Se activa al jugar esta carta desde la mano." },
+        costMultiplier: 1.0 
+    },
+    { 
+        id: "on_death", 
+        name: { en: "Deathrattle", es: "Último Aliento" }, 
+        description: { en: "Triggered when this minion dies.", es: "Se activa cuando este esbirro muere." },
+        costMultiplier: 0.8 
+    },
+    { 
+        id: "on_end_turn", 
+        name: { en: "End of Turn", es: "Al final del turno" }, 
+        description: { en: "Triggered at the end of your turn.", es: "Se activa al final de tu turno." },
+        costMultiplier: 1.2 
+    },
+    { 
+        id: "on_start_turn", 
+        name: { en: "Start of Turn", es: "Al inicio del turno" }, 
+        description: { en: "Triggered at the start of your turn.", es: "Se activa al inicio de tu turno." },
+        costMultiplier: 1.3 
+    },
+    { 
+        id: "on_damage_taken", 
+        name: { en: "Enrage / On Damage", es: "Enfurecer / Al recibir daño" }, 
+        description: { en: "Triggered whenever this minion takes damage.", es: "Se activa cada vez que este esbirro recibe daño." },
+        costMultiplier: 1.1 
+    },
+    { 
+        id: "on_attack", 
+        name: { en: "On Attack", es: "Al Atacar" }, 
+        description: { en: "Triggered when this minion attacks.", es: "Se activa cuando este esbirro ataca." },
+        costMultiplier: 1.1 
+    },
+    { 
+        id: "on_spell_cast", 
+        name: { en: "Spellburst", es: "Al lanzar hechizo" }, 
+        description: { en: "Triggered whenever you cast a spell.", es: "Se activa cada vez que lanzas un hechizo." },
+        costMultiplier: 1.2 
+    },
+    { 
+        id: "combo", 
+        name: { en: "Combo", es: "Combo" }, 
+        description: { en: "Triggered if you played another card this turn.", es: "Se activa si jugaste otra carta este turno." },
+        costMultiplier: 0.9 
+    },
+    { 
+        id: "passive", 
+        name: { en: "Passive Aura", es: "Aura Pasiva" }, 
+        description: { en: "Always active.", es: "Siempre activo." },
+        costMultiplier: 1.0 
+    }
 ];
 
 // --- 2. TARGETS ---
-// Note: Tribal Targets are handled in tribal_rules.js
 export const TARGETS = [
     { id: "none", name: { en: "None / Auto", es: "Ninguno / Auto" }, costMultiplier: 1.0 },
     { id: "target_any", name: { en: "Target Any", es: "Cualquier Objetivo" }, costMultiplier: 1.2, requiresSelection: true },
@@ -100,7 +144,7 @@ export const EFFECTS = [
         id: "give_keyword", 
         name: { en: "Give Keyword", es: "Dar Palabra Clave" }, 
         baseCost: 0, 
-        requiresKeywordSelect: true // <--- NEW FLAG
+        requiresKeywordSelect: true
     },
 
     // --- ECONOMY & TRIBE ---
@@ -120,7 +164,7 @@ export const EFFECTS = [
         id: "discover_tribe", 
         name: { en: "Discover a [Tribe]", es: "Descubre un [Tribu]" }, 
         baseCost: 2.0, unitCost: 0,
-        requiresTribeSelect: true // <--- NEW FLAG
+        requiresTribeSelect: true
     },
     { 
         id: "gain_mana", 
@@ -139,7 +183,7 @@ export const EFFECTS = [
         name: { en: "Summon Token", es: "Invocar Ficha" }, 
         baseCost: 1.0, unitCost: 2.0, 
         requiresStats: true, 
-        requiresTokenName: true // <--- NEW FLAG (For Flavor)
+        requiresTokenName: true
     },
     { 
         id: "summon_copy", 
