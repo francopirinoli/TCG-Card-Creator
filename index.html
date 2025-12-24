@@ -23,7 +23,10 @@
         <!-- LEFT COLUMN: EDITOR -->
         <aside class="editor-pane">
             <header>
-                <h1>Card Forge</h1>
+                <div class="header-top">
+                    <h1>Card Forge</h1>
+                    <button id="btnOpenSettings" class="btn-icon" title="Game Settings">⚙️ Config</button>
+                </div>
                 <p>Universal TCG Generator</p>
             </header>
 
@@ -145,6 +148,42 @@
                 <div id="balanceLog">Adjust stats to see cost calculation...</div>
             </div>
         </main>
+    </div>
+
+    <!-- GAME SETTINGS MODAL -->
+    <div id="settingsModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Game Configuration</h2>
+                <span id="btnCloseSettings" class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                
+                <section class="settings-group">
+                    <h3>Presets</h3>
+                    <div class="preset-controls">
+                        <button id="btnLoadMidgard" class="btn-secondary">Reset to Midgard TCG</button>
+                    </div>
+                </section>
+
+                <section class="settings-group">
+                    <h3>Tribe Manager</h3>
+                    <div id="settingsTribeList" class="tribe-list">
+                        <!-- Dynamic List goes here -->
+                    </div>
+                    
+                    <div class="add-tribe-row">
+                        <input type="text" id="newTribeName" placeholder="New Tribe Name">
+                        <input type="color" id="newTribeColor" value="#ff0000" title="Frame Color">
+                        <button id="btnAddTribe" class="btn-primary">Add Tribe</button>
+                    </div>
+                </section>
+
+            </div>
+            <div class="modal-footer">
+                <button id="btnSaveSettings" class="btn-primary">Save Changes</button>
+            </div>
+        </div>
     </div>
 
     <!-- Main Module Entry -->
