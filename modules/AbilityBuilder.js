@@ -1,6 +1,6 @@
 import { KEYWORDS } from '../data/keywords.js';
 import { TRIGGERS, TARGETS, EFFECTS, GENERIC_CONDITIONS } from '../data/abilities.js';
-import { TRIBAL_CONDITIONS, TRIBAL_TARGETS } from '../data/tribal_rules.js';
+import { TRIBAL_CONDITIONS } from '../data/tribal_rules.js';
 import { gm } from './GameManager.js';
 
 export class AbilityBuilder {
@@ -24,7 +24,7 @@ export class AbilityBuilder {
             effect: document.getElementById('abModalEffect'),
             target: document.getElementById('abModalTarget'),
             
-            // Dynamic Inputs
+            // Dynamic Inputs Container
             effectInputs: document.getElementById('abEffectInputs'),
             valInput: document.getElementById('abModalValue'),
             kwSelect: document.getElementById('abModalKeyword'),
@@ -45,10 +45,7 @@ export class AbilityBuilder {
     }
 
     bindEvents() {
-        if (!this.ui.modal) {
-            console.error("AbilityBuilder: Modal not found in DOM");
-            return;
-        }
+        if (!this.ui.modal) return;
 
         // Close / Save
         this.ui.btnClose.addEventListener('click', () => this.close());
@@ -87,17 +84,19 @@ export class AbilityBuilder {
         const createOpt = (val, text, dataset = {}) => {
             const opt = document.createElement('option');
             opt.value = val;
-            opt.textContent = text;
+            opt.textContent = text || "Unknown";
             Object.entries(dataset).forEach(([k, v]) => opt.dataset[k] = v);
             return opt;
         };
 
-        // 1. Triggers (Fixed Crash here)
+        // Helper to safely get English text
+        const getEn = (obj) => obj?.name?.en || obj?.name || "Unknown";
+        const getDesc = (obj) => obj?.description?.en || "";
+
+        // 1. Triggers
         this.ui.trigger.innerHTML = '';
         TRIGGERS.forEach(t => {
-            // Safely access description
-            const desc = t.description?.en || ""; 
-            this.ui.trigger.appendChild(createOpt(t.id, t.name.en, { desc: desc }));
+            this.ui.trigger.appendChild(createOpt(t.id, getEn(t), { desc: getDesc(t) }));
         });
 
         // 2. Conditions
@@ -106,20 +105,21 @@ export class AbilityBuilder {
         
         const grpGen = document.createElement('optgroup');
         grpGen.label = "Generic";
-        GENERIC_CONDITIONS.forEach(c => grpGen.appendChild(createOpt(c.id, c.name.en)));
+        GENERIC_CONDITIONS.forEach(c => grpGen.appendChild(createOpt(c.id, getEn(c))));
         this.ui.condition.appendChild(grpGen);
 
         const grpTribe = document.createElement('optgroup');
         grpTribe.label = "Tribal";
         TRIBAL_CONDITIONS.forEach(c => {
-            grpTribe.appendChild(createOpt(c.id, c.name.en, { reqTribe: c.requiresParam }));
+            // Note: requiresParam matches the flag in tribal_rules.js
+            grpTribe.appendChild(createOpt(c.id, getEn(c), { reqTribe: c.requiresParam }));
         });
         this.ui.condition.appendChild(grpTribe);
 
         // 3. Effects
         this.ui.effect.innerHTML = '';
         EFFECTS.forEach(e => {
-            this.ui.effect.appendChild(createOpt(e.id, e.name.en, {
+            this.ui.effect.appendChild(createOpt(e.id, getEn(e), {
                 reqVal: e.requiresValue || false,
                 reqStats: e.requiresStats || false,
                 reqKeyword: e.requiresKeywordSelect || false,
@@ -128,39 +128,29 @@ export class AbilityBuilder {
             }));
         });
 
-        // 4. Targets (Added Tribal Targets support)
+        // 4. Targets
         this.ui.target.innerHTML = '';
-        TARGETS.forEach(t => this.ui.target.appendChild(createOpt(t.id, t.name.en)));
-        
-        // Append Tribal Targets group if exists
-        if(TRIBAL_TARGETS && TRIBAL_TARGETS.length > 0) {
-            const grpTribeTarg = document.createElement('optgroup');
-            grpTribeTarg.label = "Tribal";
-            TRIBAL_TARGETS.forEach(t => {
-                grpTribeTarg.appendChild(createOpt(t.id, t.name.en, { reqTribe: t.requiresParam }));
-            });
-            this.ui.target.appendChild(grpTribeTarg);
-        }
+        TARGETS.forEach(t => this.ui.target.appendChild(createOpt(t.id, getEn(t))));
 
         // 5. Context Helpers
         const tribes = gm.getTribes();
         const fillTribes = (el) => {
             el.innerHTML = '';
-            tribes.forEach(t => el.appendChild(createOpt(t.id, t.name.en)));
+            tribes.forEach(t => el.appendChild(createOpt(t.id, t.name)));
         };
         fillTribes(this.ui.condTribe);
         fillTribes(this.ui.effTribeSelect);
 
         this.ui.kwSelect.innerHTML = '';
-        KEYWORDS.forEach(k => this.ui.kwSelect.appendChild(createOpt(k.id, k.name.en)));
+        KEYWORDS.forEach(k => this.ui.kwSelect.appendChild(createOpt(k.id, k.name)));
     }
 
     resetForm() {
         this.ui.flavorName.value = '';
-        this.ui.trigger.selectedIndex = 0;
+        if(this.ui.trigger.options.length > 0) this.ui.trigger.selectedIndex = 0;
         this.ui.condition.value = 'none';
-        this.ui.effect.selectedIndex = 0;
-        this.ui.target.selectedIndex = 0;
+        if(this.ui.effect.options.length > 0) this.ui.effect.selectedIndex = 0;
+        if(this.ui.target.options.length > 0) this.ui.target.selectedIndex = 0;
         this.ui.valInput.value = 1;
         this.ui.tokenName.value = '';
         this.ui.tokenAtk.value = 1;
@@ -175,6 +165,7 @@ export class AbilityBuilder {
         // 2. Condition
         const condOpt = this.ui.condition.options[this.ui.condition.selectedIndex];
         const condReqTribe = condOpt && condOpt.dataset.reqTribe === "true";
+        
         if (condReqTribe) this.ui.condTribe.classList.remove('input-hidden');
         else this.ui.condTribe.classList.add('input-hidden');
 
@@ -190,6 +181,7 @@ export class AbilityBuilder {
         this.ui.effTribeSelect.classList.add('input-hidden');
         this.ui.tokenBox.classList.add('input-hidden');
 
+        // Toggle specific inputs based on dataset flags from populateDropdowns
         if (d.reqVal === "true") {
             this.ui.valInput.classList.remove('input-hidden');
             this.ui.valInput.placeholder = "Value";
@@ -198,73 +190,80 @@ export class AbilityBuilder {
             this.ui.valInput.classList.remove('input-hidden');
             this.ui.valInput.placeholder = "Stat Sum (+X/+X)";
         }
-        if (d.reqKeyword === "true") this.ui.kwSelect.classList.remove('input-hidden');
-        if (d.reqTribe === "true") this.ui.effTribeSelect.classList.remove('input-hidden');
-        if (d.reqToken === "true") this.ui.tokenBox.classList.remove('input-hidden');
+        if (d.reqKeyword === "true") {
+            this.ui.kwSelect.classList.remove('input-hidden');
+        }
+        if (d.reqTribe === "true") {
+            this.ui.effTribeSelect.classList.remove('input-hidden');
+        }
+        if (d.reqToken === "true") {
+            this.ui.tokenBox.classList.remove('input-hidden');
+        }
 
         this.updatePreview();
     }
 
     updatePreview() {
         const data = this.scrapeData();
+        const getEn = (obj) => obj?.name?.en || obj?.name || "";
+
         let text = "";
         
         // Trigger
-        if (data.flavorName) text += `<b>${data.flavorName}</b>: `;
-        else {
-            const trigName = TRIGGERS.find(t => t.id === data.trigger)?.name.en || "";
-            if(data.trigger !== 'passive') text += `<b>${trigName}:</b> `;
+        if (data.flavorName) {
+            text += `<b>${data.flavorName}</b>`;
+            if (data.trigger !== 'passive') {
+                const trig = TRIGGERS.find(t => t.id === data.trigger);
+                text += ` (${getEn(trig)}): `;
+            } else {
+                text += `: `;
+            }
+        } else {
+            const trig = TRIGGERS.find(t => t.id === data.trigger);
+            if (data.trigger !== 'passive') text += `<b>${getEn(trig)}:</b> `;
         }
-        
+
         // Condition
         if (data.condition) {
-            let condText = GENERIC_CONDITIONS.find(c => c.id === data.condition)?.name.en || "";
-            if(!condText) {
-                condText = TRIBAL_CONDITIONS.find(c => c.id === data.condition)?.name.en || "";
-                if(data.conditionParam) {
-                    const tName = gm.getTribes().find(t => t.id === data.conditionParam)?.name || "Tribe";
-                    condText = condText.replace('[Tribe]', tName);
-                }
+            let condName = "";
+            const genC = GENERIC_CONDITIONS.find(c => c.id === data.condition);
+            const tribeC = TRIBAL_CONDITIONS.find(c => c.id === data.condition);
+            
+            if (genC) condName = getEn(genC);
+            if (tribeC) {
+                condName = getEn(tribeC);
+                const tribeName = gm.getTribes().find(t => t.id === data.conditionParam)?.name || "Tribe";
+                condName = condName.replace("[Tribe]", tribeName);
             }
-            text += `<i>${condText},</i> `;
+            text += `<i>${condName},</i> `;
         }
 
         // Effect
         const effDef = EFFECTS.find(e => e.id === data.effect);
-        let effText = effDef ? effDef.name.en : "Do Effect";
-        
-        if(effText.includes("X")) effText = effText.replace("X", data.value);
-        if(effDef?.requiresValue && !effText.includes(data.value)) effText += ` ${data.value}`;
-        
-        // Substitutions
-        if(data.keyword) {
-            const kw = KEYWORDS.find(k => k.id === data.keyword)?.name || "";
-            effText = effText.replace("Keyword", kw); // Naive replace
-            if(effDef?.id === 'give_keyword') effText = `Give ${kw}`;
-        }
-        if(data.tokenData) {
+        let effText = effDef ? getEn(effDef) : "Do Effect";
+
+        if (data.keyword) {
+            const kName = KEYWORDS.find(k => k.id === data.keyword)?.name || "Keyword";
+            effText = `Give ${kName}`;
+        } else if (data.effectTribe) {
+            const trName = gm.getTribes().find(t => t.id === data.effectTribe)?.name || "Tribe";
+            effText = effText.replace("[Tribe]", trName);
+        } else if (data.tokenData) {
             effText = `Summon a ${data.tokenData.attack}/${data.tokenData.health} ${data.tokenData.name}`;
-        }
-        if(data.effectTribe) {
-            const tName = gm.getTribes().find(t => t.id === data.effectTribe)?.name || "Tribe";
-            effText = effText.replace('[Tribe]', tName);
+        } else if (effText.includes("X")) {
+            effText = effText.replace("X", data.value);
+        } else if (effDef && effDef.requiresValue) {
+            effText += ` ${data.value}`;
         }
 
         text += effText;
-        
+
         // Target
         const targDef = TARGETS.find(t => t.id === data.target);
-        const tribeTargDef = TRIBAL_TARGETS.find(t => t.id === data.target);
-        
         if (targDef && targDef.id !== 'none') {
-            text += ` to ${targDef.name.en}`;
-        } else if (tribeTargDef) {
-            let tName = tribeTargDef.name.en;
-            // Tribal targets usually don't have a param selector in THIS specific UI implementation yet (TODO improvement)
-            // But we can just show the text for now
-            text += ` to ${tName}`;
+            text += ` to ${getEn(targDef)}`;
         }
-        
+
         this.ui.previewText.innerHTML = text + ".";
     }
 
