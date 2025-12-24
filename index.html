@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal TCG Card Forge</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/card.css">
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- LEFT COLUMN: EDITOR -->
+        <aside class="editor-pane">
+            <header>
+                <h1>Card Forge</h1>
+                <p>Create balanced TCG cards.</p>
+            </header>
+
+            <form id="cardForm">
+                <!-- 1. Identity -->
+                <section class="form-group">
+                    <label for="cardName">Name</label>
+                    <input type="text" id="cardName" placeholder="Card Name" value="New Card">
+                </section>
+
+                <section class="form-group two-col">
+                    <div>
+                        <label for="cardType">Type</label>
+                        <select id="cardType">
+                            <option value="minion">Minion</option>
+                            <option value="spell">Spell</option>
+                            <option value="weapon">Weapon</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="cardRarity">Rarity</label>
+                        <select id="cardRarity"></select> <!-- Populated by JS -->
+                    </div>
+                </section>
+
+                <section class="form-group">
+                    <label for="cardTribe">Tribe / School</label>
+                    <select id="cardTribe"></select> <!-- Populated by JS -->
+                </section>
+
+                <!-- 2. Stats (Dynamic Visibility) -->
+                <section class="form-group two-col" id="stats-section">
+                    <div>
+                        <label>Attack: <span id="val-attack">0</span></label>
+                        <input type="range" id="statAttack" min="0" max="12" value="0">
+                    </div>
+                    <div>
+                        <!-- Label changes to "Durability" for weapons -->
+                        <label><span id="lbl-health">Health</span>: <span id="val-health">1</span></label>
+                        <input type="range" id="statHealth" min="1" max="12" value="1">
+                    </div>
+                </section>
+
+                <!-- 3. Keywords (Checkboxes) -->
+                <section class="form-group" id="keywords-section">
+                    <label>Keywords</label>
+                    <div id="keyword-container" class="checkbox-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </section>
+
+                <!-- 4. Dynamic Abilities -->
+                <section class="form-group">
+                    <label>Abilities</label>
+                    <div id="abilities-list">
+                        <!-- Dynamic Rows go here -->
+                    </div>
+                    <button type="button" id="btnAddAbility" class="btn-secondary">+ Add Ability</button>
+                </section>
+
+                <!-- 5. Flavor -->
+                <section class="form-group">
+                    <label for="cardFlavor">Flavor Text</label>
+                    <textarea id="cardFlavor" rows="2" placeholder="Lore text..."></textarea>
+                </section>
+            </form>
+        </aside>
+
+        <!-- RIGHT COLUMN: PREVIEW -->
+        <main class="preview-pane">
+            <div class="card-wrapper">
+                <!-- The Visual Card -->
+                <div id="cardPreview" class="card-frame rarity-common type-minion">
+                    <div class="card-header">
+                        <div class="mana-gem" id="previewMana">0</div>
+                        <div class="card-name" id="previewName">New Card</div>
+                    </div>
+                    <div class="card-image-area">
+                        <div class="image-placeholder">No Image</div>
+                    </div>
+                    <div class="card-type-bar">
+                        <span id="previewTribe">General</span>
+                    </div>
+                    <div class="card-text-box">
+                        <p id="previewText" class="rules-text"></p>
+                        <p id="previewFlavor" class="flavor-text"></p>
+                    </div>
+                    <div class="card-footer">
+                        <div class="stat-gem attack" id="previewAttack">0</div>
+                        <div class="stat-gem health" id="previewHealth">1</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Debug / Output Area -->
+            <div class="info-panel">
+                <h3>Balance Report</h3>
+                <div id="balanceLog">Adjust stats to see cost calculation...</div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Main Module Entry -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>
