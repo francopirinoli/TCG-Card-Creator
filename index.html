@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Universal TCG Card Forge</title>
     
-    <!-- Fonts: Cinzel (Fantasy Headers), Lora (Flavor), Roboto (UI) -->
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Lora:ital@1&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/card.css">
 
-    <!-- Export Library (html-to-image) -->
+    <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
 </head>
 <body>
@@ -25,12 +25,12 @@
             <header>
                 <div class="header-top">
                     <h1>Card Forge</h1>
-                    <button id="btnOpenSettings" class="btn-icon" title="Game Settings">⚙️ Config</button>
+                    <button id="btnOpenSettings" class="btn-icon" type="button">⚙️ Config</button>
                 </div>
                 <p>Universal TCG Generator</p>
             </header>
 
-            <form id="cardForm">
+            <form id="cardForm" onsubmit="return false;">
                 <!-- 1. Identity -->
                 <section class="form-group">
                     <label for="cardName">Name</label>
@@ -48,49 +48,46 @@
                     </div>
                     <div>
                         <label for="cardRarity">Rarity</label>
-                        <select id="cardRarity"></select> <!-- Populated by JS -->
+                        <select id="cardRarity"></select>
                     </div>
                 </section>
 
                 <section class="form-group">
                     <label for="cardTribe">Tribe / Faction</label>
-                    <select id="cardTribe"></select> <!-- Populated by JS -->
+                    <select id="cardTribe"></select>
                 </section>
 
                 <!-- 2. Visuals -->
                 <section class="form-group">
-                    <label for="imageUpload">Card Art (Upload Image)</label>
+                    <label for="imageUpload">Card Art</label>
                     <input type="file" id="imageUpload" accept="image/*">
                 </section>
 
-                <!-- 3. Stats (Dynamic Visibility) -->
+                <!-- 3. Stats -->
                 <section class="form-group two-col" id="stats-section">
                     <div>
                         <label>Attack: <span id="val-attack">0</span></label>
                         <input type="range" id="statAttack" min="0" max="12" value="0">
                     </div>
                     <div>
-                        <!-- Label changes to "Durability" for weapons -->
                         <label><span id="lbl-health">Health</span>: <span id="val-health">1</span></label>
                         <input type="range" id="statHealth" min="1" max="12" value="1">
                     </div>
                 </section>
 
-                <!-- 4. Keywords (Checkboxes) -->
-                <section class="form-group" id="keywords-section">
+                <!-- 4. Keywords -->
+                <section class="form-group">
                     <label>Keywords</label>
-                    <div id="keyword-container" class="checkbox-grid">
-                        <!-- Populated by JS -->
-                    </div>
+                    <div id="keyword-container" class="checkbox-grid"></div>
                 </section>
 
-                <!-- 5. Dynamic Abilities -->
+                <!-- 5. Abilities (Summary View) -->
                 <section class="form-group">
                     <label>Abilities</label>
-                    <div id="abilities-list">
-                        <!-- Dynamic Rows go here -->
+                    <div id="abilitiesListSummary" class="ability-summary-list">
+                        <!-- Added abilities appear here as small blocks -->
                     </div>
-                    <button type="button" id="btnAddAbility" class="btn-secondary">+ Add Ability</button>
+                    <button type="button" id="btnOpenAbilityModal" class="btn-secondary">+ Add New Ability</button>
                 </section>
 
                 <!-- 6. Flavor -->
@@ -103,32 +100,25 @@
 
         <!-- RIGHT COLUMN: PREVIEW -->
         <main class="preview-pane">
-            
-            <!-- Card Wrapper (Target for Export) -->
             <div class="card-render-area">
                 <div id="cardPreview" class="card-frame rarity-common type-minion">
-                    
                     <div class="card-header">
                         <div class="mana-gem" id="previewMana">0</div>
                         <div class="card-name-plate">
                             <span id="previewName">New Hero</span>
                         </div>
                     </div>
-
                     <div class="card-art-layer">
                         <img id="previewArt" src="" alt="" style="display:none;">
                         <div id="previewArtPlaceholder">No Image</div>
                     </div>
-
                     <div class="card-type-bar">
                         <span id="previewTribe">General</span>
                     </div>
-
                     <div class="card-text-box">
                         <p id="previewText" class="rules-text"></p>
                         <p id="previewFlavor" class="flavor-text"></p>
                     </div>
-
                     <div class="card-footer">
                         <div class="stat-gem attack" id="previewAttack">0</div>
                         <div class="stat-gem health" id="previewHealth">1</div>
@@ -136,21 +126,19 @@
                 </div>
             </div>
 
-            <!-- Export Controls -->
             <div class="export-controls">
-                <button id="btnSaveImage" class="btn-primary">Download Image (PNG)</button>
-                <button id="btnSaveJSON" class="btn-secondary">Save Data (JSON)</button>
+                <button id="btnSaveImage" class="btn-primary">Download Image</button>
+                <button id="btnSaveJSON" class="btn-secondary">Save JSON</button>
             </div>
 
-            <!-- Debug / Output Area -->
             <div class="info-panel">
                 <h3>Balance Report</h3>
-                <div id="balanceLog">Adjust stats to see cost calculation...</div>
+                <div id="balanceLog">Adjust stats...</div>
             </div>
         </main>
     </div>
 
-    <!-- GAME SETTINGS MODAL -->
+    <!-- MODAL 1: GAME CONFIG -->
     <div id="settingsModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
@@ -158,30 +146,96 @@
                 <span id="btnCloseSettings" class="close-modal">&times;</span>
             </div>
             <div class="modal-body">
-                
                 <section class="settings-group">
                     <h3>Presets</h3>
-                    <div class="preset-controls">
-                        <button id="btnLoadMidgard" class="btn-secondary">Reset to Midgard TCG</button>
-                    </div>
+                    <button id="btnLoadMidgard" class="btn-secondary">Reset to Midgard TCG</button>
                 </section>
-
                 <section class="settings-group">
                     <h3>Tribe Manager</h3>
-                    <div id="settingsTribeList" class="tribe-list">
-                        <!-- Dynamic List goes here -->
-                    </div>
-                    
+                    <div id="settingsTribeList" class="tribe-list"></div>
                     <div class="add-tribe-row">
                         <input type="text" id="newTribeName" placeholder="New Tribe Name">
-                        <input type="color" id="newTribeColor" value="#ff0000" title="Frame Color">
-                        <button id="btnAddTribe" class="btn-primary">Add Tribe</button>
+                        <input type="color" id="newTribeColor" value="#ff0000">
+                        <button id="btnAddTribe" class="btn-primary">Add</button>
                     </div>
                 </section>
+            </div>
+            <div class="modal-footer">
+                <button id="btnSaveSettings" class="btn-primary">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: ABILITY BUILDER (New!) -->
+    <div id="abilityModal" class="modal hidden">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>Create Ability</h2>
+                <span id="btnCloseAbility" class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body ability-builder-layout">
+                
+                <!-- 1. Flavor Name -->
+                <div class="form-group">
+                    <label>Flavor Name (Optional)</label>
+                    <input type="text" id="abModalName" placeholder="e.g. Fireball, Divine Blessing">
+                    <small style="color:#666">Appears in bold at the start of the text.</small>
+                </div>
+
+                <!-- 2. Logic Flow -->
+                <div class="logic-grid">
+                    <!-- Trigger -->
+                    <div class="logic-block">
+                        <label>1. Trigger (When?)</label>
+                        <select id="abModalTrigger"></select>
+                        <p id="descTrigger" class="help-text">...</p>
+                    </div>
+
+                    <!-- Condition -->
+                    <div class="logic-block">
+                        <label>2. Condition (If?)</label>
+                        <select id="abModalCondition"></select>
+                        <select id="abModalCondTribe" class="input-hidden mt-2"></select>
+                    </div>
+
+                    <!-- Effect -->
+                    <div class="logic-block">
+                        <label>3. Effect (Do what?)</label>
+                        <select id="abModalEffect"></select>
+                        
+                        <!-- Dynamic Effect Inputs -->
+                        <div id="abEffectInputs" class="dynamic-inputs mt-2">
+                            <input type="number" id="abModalValue" class="input-hidden" placeholder="Value">
+                            <select id="abModalKeyword" class="input-hidden"></select>
+                            <select id="abModalEffectTribe" class="input-hidden"></select>
+                            
+                            <!-- Token Builder -->
+                            <div id="abModalTokenParams" class="token-box input-hidden">
+                                <input type="text" id="abModalTokenName" placeholder="Token Name">
+                                <div class="two-col">
+                                    <input type="number" id="abModalTokenAtk" placeholder="Atk" value="1">
+                                    <input type="number" id="abModalTokenHp" placeholder="HP" value="1">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Target -->
+                    <div class="logic-block">
+                        <label>4. Target (To whom?)</label>
+                        <select id="abModalTarget"></select>
+                    </div>
+                </div>
+
+                <!-- Live Preview of Text -->
+                <div class="text-preview-box">
+                    <label>Text Preview:</label>
+                    <p id="abModalPreviewText">...</p>
+                </div>
 
             </div>
             <div class="modal-footer">
-                <button id="btnSaveSettings" class="btn-primary">Save Changes</button>
+                <button id="btnConfirmAbility" class="btn-primary">Add Ability</button>
             </div>
         </div>
     </div>

@@ -1,22 +1,22 @@
 import { RARITIES } from './data/rarities.js';
 import { KEYWORDS } from './data/keywords.js';
 import { TRIGGERS, TARGETS, EFFECTS, GENERIC_CONDITIONS } from './data/abilities.js';
-import { TRIBAL_CONDITIONS, TRIBAL_TARGETS } from './data/tribal_rules.js';
+import { TRIBAL_CONDITIONS } from './data/tribal_rules.js';
 import { ManaCalculator } from './modules/ManaCalculator.js';
 import { gm } from './modules/GameManager.js';
-import { AbilityBuilder } from './modules/AbilityBuilder.js'; // The new module
+import { abilityBuilder } from './modules/AbilityBuilder.js'; // The Modal Controller
 
 console.log("Card Forge Initializing...");
 
 // --- 1. GLOBAL STATE ---
 let currentCard = {
-    name: "New Card",
+    name: "New Hero",
     type: "minion",
     rarity: "common",
     tribe: "neutral",
     stats: { attack: 0, health: 1 },
     keywords: {},
-    abilities: [],
+    abilities: [], // Stores ability objects
     flavorText: "",
     image: null
 };
@@ -49,9 +49,9 @@ const ui = {
     flavor: document.getElementById('cardFlavor'),
     keywordContainer: document.getElementById('keyword-container'),
     
-    // Ability Section
-    abilitiesList: document.getElementById('abilities-list'),
-    btnAddAbility: document.getElementById('btnAddAbility'),
+    // Ability Section (The Summary List)
+    abilitiesListSummary: document.getElementById('abilitiesListSummary'),
+    btnOpenAbilityModal: document.getElementById('btnOpenAbilityModal'),
 
     // Dynamic Labels
     statsSection: document.getElementById('stats-section'),
@@ -79,6 +79,7 @@ const ui = {
 
 // --- 3. INITIALIZATION ---
 function init() {
+    abilityBuilder.init(); // Bind modal events
     populateDropdowns();
     setupEventListeners();
     updateCardState(); 
@@ -105,7 +106,7 @@ function populateDropdowns() {
         ui.tribe.appendChild(opt);
     });
 
-    // Default selection logic
+    // Default selection
     if (tribes.find(t => t.id === currentCard.tribe)) {
         ui.tribe.value = currentCard.tribe;
     } else {
@@ -117,7 +118,7 @@ function populateDropdowns() {
         KEYWORDS.forEach(k => {
             const div = document.createElement('div');
             div.className = 'checkbox-item';
-            div.title = k.description; // Tooltip added!
+            div.title = k.description; // Tooltip added
             div.innerHTML = `
                 <input type="checkbox" id="kw-${k.id}" value="${k.id}" class="keyword-check">
                 <label for="kw-${k.id}">${k.name}</label>
@@ -133,13 +134,16 @@ function setupEventListeners() {
         if(e.target.id !== 'imageUpload') updateCardState();
     });
 
-    // Specific Handlers
     ui.type.addEventListener('change', handleTypeChange);
     
-    // Ability Builder via Module
-    ui.btnAddAbility.addEventListener('click', () => { 
-        AbilityBuilder.addRow(ui.abilitiesList); 
-        updateCardState(); 
+    // --- ABILITY FLOW ---
+    ui.btnOpenAbilityModal.addEventListener('click', () => {
+        // Open Modal, pass callback to receive data
+        abilityBuilder.open((newAbilityData) => {
+            currentCard.abilities.push(newAbilityData);
+            renderAbilitiesSummary();
+            updateCardState();
+        });
     });
 
     // Asset & Export
@@ -147,7 +151,7 @@ function setupEventListeners() {
     ui.btnSaveJSON.addEventListener('click', downloadJSON);
     ui.btnSaveImage.addEventListener('click', downloadImage);
 
-    // Settings Modal
+    // --- SETTINGS MODAL ---
     ui.btnOpenSettings.addEventListener('click', openSettings);
     ui.btnCloseSettings.addEventListener('click', closeSettings);
     ui.btnSaveSettings.addEventListener('click', closeSettings);
@@ -172,7 +176,39 @@ function setupEventListeners() {
     });
 }
 
-// --- 4. SETTINGS MODAL LOGIC ---
+// --- 4. ABILITY LIST MANAGEMENT ---
+
+function renderAbilitiesSummary() {
+    ui.abilitiesListSummary.innerHTML = '';
+    
+    currentCard.abilities.forEach((ab, index) => {
+        const item = document.createElement('div');
+        item.className = 'ability-summary-item';
+        
+        // Generate a short preview string
+        const triggerName = TRIGGERS.find(t => t.id === ab.trigger)?.name.en || "Passive";
+        const flavor = ab.flavorName ? `<b>${ab.flavorName}</b>` : `<b>${triggerName}</b>`;
+        
+        item.innerHTML = `
+            <span class="summary-text">${flavor}: ...</span>
+            <button type="button" class="btn-remove-sm" data-idx="${index}">X</button>
+        `;
+        
+        ui.abilitiesListSummary.appendChild(item);
+    });
+
+    // Bind delete buttons
+    document.querySelectorAll('.btn-remove-sm').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const idx = parseInt(e.target.dataset.idx);
+            currentCard.abilities.splice(idx, 1);
+            renderAbilitiesSummary();
+            updateCardState();
+        });
+    });
+}
+
+// --- 5. SETTINGS LOGIC ---
 
 function openSettings() {
     renderTribeSettingsList();
@@ -181,8 +217,8 @@ function openSettings() {
 
 function closeSettings() {
     ui.settingsModal.classList.add('hidden');
-    populateDropdowns(); // Refresh editor dropdowns
-    updateCardState();   // Re-render preview
+    populateDropdowns(); 
+    updateCardState();
 }
 
 function renderTribeSettingsList() {
@@ -200,7 +236,6 @@ function renderTribeSettingsList() {
         ui.settingsTribeList.appendChild(row);
     });
 
-    // Bind dynamic listeners
     document.querySelectorAll('.edit-color').forEach(el => {
         el.addEventListener('change', (e) => gm.updateTribe(e.target.dataset.id, { color: e.target.value }));
     });
@@ -213,41 +248,6 @@ function renderTribeSettingsList() {
             renderTribeSettingsList();
         });
     });
-}
-
-// --- 5. ASSET & EXPORT ---
-
-function handleImageUpload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        currentCard.image = event.target.result;
-        updateCardState(); // Trigger re-render to show image
-    };
-    reader.readAsDataURL(file);
-}
-
-function downloadJSON() {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentCard, null, 2));
-    const node = document.createElement('a');
-    node.setAttribute("href", dataStr);
-    node.setAttribute("download", `${currentCard.name.replace(/\s+/g, '_')}.json`);
-    document.body.appendChild(node);
-    node.click();
-    node.remove();
-}
-
-function downloadImage() {
-    const node = document.querySelector('.card-render-area');
-    htmlToImage.toPng(node)
-        .then((dataUrl) => {
-            const link = document.createElement('a');
-            link.download = `${currentCard.name.replace(/\s+/g, '_')}.png`;
-            link.href = dataUrl;
-            link.click();
-        })
-        .catch((err) => console.error(err));
 }
 
 // --- 6. CORE UPDATE LOOP ---
@@ -269,7 +269,7 @@ function handleTypeChange() {
 
 function updateCardState() {
     // 1. Scrape Standard Inputs
-    currentCard.name = ui.name.value || "New Card";
+    currentCard.name = ui.name.value || "New Hero";
     currentCard.rarity = ui.rarity.value;
     currentCard.tribe = ui.tribe.value;
     currentCard.flavorText = ui.flavor.value;
@@ -288,13 +288,12 @@ function updateCardState() {
         currentCard.keywords[chk.value] = true;
     });
 
-    // 2. Scrape Abilities (Using the new Module)
-    currentCard.abilities = AbilityBuilder.getAbilities(ui.abilitiesList);
+    // Note: currentCard.abilities is already updated by the Modal callback
 
-    // 3. Calculate Balance
+    // 2. Calculate Balance
     const report = ManaCalculator.calculate(currentCard);
 
-    // 4. Render Results
+    // 3. Render
     renderPreview(report);
     renderLog(report);
 }
@@ -309,12 +308,10 @@ function renderPreview(report) {
     ui.pAttack.textContent = currentCard.stats.attack;
     ui.pHealth.textContent = currentCard.stats.health;
 
-    // Tribe Name Lookup
     const tribes = gm.getTribes();
     const tribeData = tribes.find(t => t.id === currentCard.tribe) || tribes[0];
     ui.pTribe.textContent = tribeData.name;
 
-    // Art
     if (currentCard.image) {
         ui.pArt.src = currentCard.image;
         ui.pArt.style.display = 'block';
@@ -332,94 +329,87 @@ function renderPreview(report) {
         .map(kId => KEYWORDS.find(k => k.id === kId)?.name || kId);
     if (kws.length) ruleHtml += `<b>${kws.join(', ')}</b>. <br>`;
 
-    // Abilities (Advanced Text Parsing)
+    // Abilities Text Generation
     currentCard.abilities.forEach(ab => {
-        const trig = TRIGGERS.find(t => t.id === ab.trigger);
-        const eff = EFFECTS.find(e => e.id === ab.effect);
-        const targ = TARGETS.find(t => t.id === ab.target);
-        
-        let text = "";
-        
-        // 1. Trigger Name (or Custom Flavor Name)
-        if (trig.id !== 'passive') {
-            if (ab.flavorName && ab.flavorName.trim() !== "") {
-                text += `<b>${ab.flavorName} (${trig.name.en}):</b> `;
-            } else {
-                text += `<b>${trig.name.en}:</b> `;
-            }
-        } else {
-            // Passive doesn't show "Passive:", but shows Flavor Name if present
-            if (ab.flavorName && ab.flavorName.trim() !== "") {
-                text += `<b>${ab.flavorName}:</b> `;
-            }
-        }
-        
-        // 2. Condition Text (Swapping [Tribe])
-        if (ab.condition) {
-            const genCond = GENERIC_CONDITIONS.find(c => c.id === ab.condition);
-            const tribeCond = TRIBAL_CONDITIONS.find(c => c.id === ab.condition);
-            
-            let condName = genCond ? genCond.name.en : (tribeCond ? tribeCond.name.en : "");
-            
-            // Replace [Tribe] placeholder with actual tribe name
-            if (condName.includes("[Tribe]") && ab.conditionParam) {
-                const cTribe = tribes.find(t => t.id === ab.conditionParam);
-                const cTribeName = cTribe ? cTribe.name : "Tribe";
-                condName = condName.replace("[Tribe]", cTribeName);
-            }
-            
-            text += `<i>(${condName})</i> `;
-        }
-
-        // 3. Effect Text
-        let effText = eff.name.en;
-
-        // Replace [Tribe] in effect (e.g. Discover a Dragon)
-        if (effText.includes("[Tribe]") && ab.effectTribe) {
-            const eTribe = tribes.find(t => t.id === ab.effectTribe);
-            const eTribeName = eTribe ? eTribe.name : "Tribe";
-            effText = effText.replace("[Tribe]", eTribeName);
-        }
-
-        // Handle Values / Tokens
-        if (eff.id === 'summon_token' && ab.tokenData) {
-            // "Summon a 2/2 Zombie"
-            effText = `Summon a ${ab.tokenData.attack}/${ab.tokenData.health} ${ab.tokenData.name}`;
-        } else if (eff.id === 'give_keyword' && ab.keyword) {
-            // "Give Divine Shield"
-            const kName = KEYWORDS.find(k => k.id === ab.keyword)?.name || "Keyword";
-            effText = `Give ${kName}`;
-        } else if (effText.includes("X")) {
-            // "Deal 3 Damage"
-            effText = effText.replace('X', ab.value);
-        } else {
-            // Append value if it requires one but doesn't have X placeholder
-            // e.g. "Draw Card(s) 2" -> "Draw 2 Card(s)" logic ideally, but simplified:
-            effText = effText + (eff.requiresValue ? ` ${ab.value}` : "");
-        }
-
-        text += effText;
-
-        // 4. Target Text
-        // Only show target if it's not "None" and not implied by the effect
-        if (targ.id !== 'none') {
-            text += ` to ${targ.name.en}`;
-        }
-        
-        ruleHtml += `${text}. <br>`;
+        ruleHtml += generateAbilityText(ab) + "<br>";
     });
 
     ui.pText.innerHTML = ruleHtml;
 
-    // Visuals
+    // Visuals & Colors
     ui.pFrame.className = `card-frame rarity-${currentCard.rarity} type-${currentCard.type}`;
-    
-    // Tribe Color Override
     if (tribeData && tribeData.color) {
         ui.pFrame.style.borderColor = tribeData.color;
     } else {
         ui.pFrame.style.borderColor = ''; 
     }
+}
+
+// Helper to generate the text string for an ability (Shared logic with Modal preview)
+function generateAbilityText(ab) {
+    const tribes = gm.getTribes();
+    const trig = TRIGGERS.find(t => t.id === ab.trigger);
+    const eff = EFFECTS.find(e => e.id === ab.effect);
+    const targ = TARGETS.find(t => t.id === ab.target);
+    
+    let text = "";
+    
+    // 1. Trigger
+    if (trig.id !== 'passive') {
+        if (ab.flavorName && ab.flavorName.trim() !== "") {
+            text += `<b>${ab.flavorName} (${trig.name.en}):</b> `;
+        } else {
+            text += `<b>${trig.name.en}:</b> `;
+        }
+    } else {
+        if (ab.flavorName && ab.flavorName.trim() !== "") {
+            text += `<b>${ab.flavorName}:</b> `;
+        }
+    }
+    
+    // 2. Condition
+    if (ab.condition) {
+        const genCond = GENERIC_CONDITIONS.find(c => c.id === ab.condition);
+        const tribeCond = TRIBAL_CONDITIONS.find(c => c.id === ab.condition);
+        
+        let condName = genCond ? genCond.name.en : (tribeCond ? tribeCond.name.en : "");
+        
+        if (condName.includes("[Tribe]") && ab.conditionParam) {
+            const cTribe = tribes.find(t => t.id === ab.conditionParam);
+            const cTribeName = cTribe ? cTribe.name : "Tribe";
+            condName = condName.replace("[Tribe]", cTribeName);
+        }
+        text += `<i>(${condName})</i> `;
+    }
+
+    // 3. Effect
+    let effText = eff.name.en;
+
+    if (effText.includes("[Tribe]") && ab.effectTribe) {
+        const eTribe = tribes.find(t => t.id === ab.effectTribe);
+        const eTribeName = eTribe ? eTribe.name : "Tribe";
+        effText = effText.replace("[Tribe]", eTribeName);
+    }
+
+    if (eff.id === 'summon_token' && ab.tokenData) {
+        effText = `Summon a ${ab.tokenData.attack}/${ab.tokenData.health} ${ab.tokenData.name}`;
+    } else if (eff.id === 'give_keyword' && ab.keyword) {
+        const kName = KEYWORDS.find(k => k.id === ab.keyword)?.name || "Keyword";
+        effText = `Give ${kName}`;
+    } else if (effText.includes("X")) {
+        effText = effText.replace('X', ab.value);
+    } else {
+        effText = effText + (eff.requiresValue ? ` ${ab.value}` : "");
+    }
+
+    text += effText;
+
+    // 4. Target
+    if (targ.id !== 'none') {
+        text += ` to ${targ.name.en}`;
+    }
+    
+    return text + ".";
 }
 
 function renderLog(report) {
@@ -439,6 +429,44 @@ function renderLog(report) {
     }
 
     ui.log.innerHTML = html;
+}
+
+// Asset Handling Helpers
+function handleImageUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        currentCard.image = event.target.result; 
+        updateCardState();
+    };
+    reader.readAsDataURL(file);
+}
+
+function downloadJSON() {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentCard, null, 2));
+    const node = document.createElement('a');
+    node.setAttribute("href", dataStr);
+    node.setAttribute("download", `${currentCard.name.replace(/\s+/g, '_')}.json`);
+    document.body.appendChild(node);
+    node.click();
+    node.remove();
+}
+
+function downloadImage() {
+    const node = document.querySelector('.card-render-area');
+    if (window.htmlToImage) {
+        window.htmlToImage.toPng(node)
+            .then((dataUrl) => {
+                const link = document.createElement('a');
+                link.download = `${currentCard.name.replace(/\s+/g, '_')}.png`;
+                link.href = dataUrl;
+                link.click();
+            })
+            .catch((err) => console.error(err));
+    } else {
+        alert("Image export library not loaded.");
+    }
 }
 
 init();

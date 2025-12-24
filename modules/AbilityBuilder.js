@@ -1,209 +1,323 @@
 import { KEYWORDS } from '../data/keywords.js';
 import { TRIGGERS, TARGETS, EFFECTS, GENERIC_CONDITIONS } from '../data/abilities.js';
-import { TRIBAL_CONDITIONS, TRIBAL_TARGETS, TRIBAL_EFFECTS } from '../data/tribal_rules.js';
+import { TRIBAL_CONDITIONS, TRIBAL_TARGETS } from '../data/tribal_rules.js';
 import { gm } from './GameManager.js';
 
 export class AbilityBuilder {
-
-    /**
-     * Creates a new visual row in the UI and sets up internal listeners.
-     * @param {HTMLElement} container - The DOM element to append the row to.
-     */
-    static addRow(container) {
-        const rowId = 'ab-' + Date.now();
-        const row = document.createElement('div');
-        row.className = 'ability-row';
-        row.id = rowId;
-
-        // --- 1. PREPARE OPTIONS ---
-        const triggers = TRIGGERS.map(t => `<option value="${t.id}">${t.name.en}</option>`).join('');
-        const targets = TARGETS.map(t => `<option value="${t.id}">${t.name.en}</option>`).join('');
-        const keywords = KEYWORDS.map(k => `<option value="${k.id}">${k.name}</option>`).join('');
-        
-        // Effects
-        const effects = EFFECTS.map(e => `
-            <option value="${e.id}" 
-                data-req-val="${e.requiresValue || false}" 
-                data-req-stats="${e.requiresStats || false}"
-                data-req-keyword="${e.requiresKeywordSelect || false}"
-                data-req-tribe="${e.requiresTribeSelect || false}"
-                data-req-token="${e.requiresTokenName || false}"
-            >${e.name.en}</option>`).join('');
-
-        // Conditions (Generic + Tribal)
-        let condOpts = `<option value="none">No Condition</option>`;
-        condOpts += GENERIC_CONDITIONS.map(c => `<option value="${c.id}">${c.name.en}</option>`).join('');
-        condOpts += `<optgroup label="Tribal">${TRIBAL_CONDITIONS.map(c => `<option value="${c.id}" data-req-tribe="true">${c.name.en}</option>`).join('')}</optgroup>`;
-
-        // Tribes (From Game Manager)
-        const currentTribes = gm.getTribes();
-        const tribeOpts = currentTribes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-
-        // --- 2. BUILD HTML ---
-        row.innerHTML = `
-            <div class="ability-row-header">
-                <input type="text" class="ab-flavor-name" placeholder="Ability Name (e.g. Fireball)" title="Optional flavor name">
-                <button type="button" class="btn-remove" data-target="${rowId}">X</button>
-            </div>
-            
-            <div class="mad-libs-line">
-                <span class="label-text">When:</span>
-                <select class="ab-trigger">${triggers}</select>
-            </div>
-
-            <div class="mad-libs-line">
-                <span class="label-text">If:</span>
-                <select class="ab-condition">${condOpts}</select>
-                <!-- Contextual: Tribe Selector for Condition -->
-                <select class="ab-cond-tribe input-hidden">${tribeOpts}</select>
-            </div>
-
-            <div class="mad-libs-line">
-                <span class="label-text">Do:</span>
-                <select class="ab-effect">${effects}</select>
-                
-                <!-- Contextual Inputs -->
-                <input type="number" class="ab-value input-sm input-hidden" placeholder="Val" value="1">
-                <select class="ab-keyword input-hidden">${keywords}</select>
-                <select class="ab-effect-tribe input-hidden">${tribeOpts}</select>
-            </div>
-
-            <!-- Token Specific Line (Hidden by default) -->
-            <div class="mad-libs-line token-line input-hidden">
-                <input type="text" class="ab-token-name" placeholder="Token Name">
-                <input type="number" class="ab-token-atk input-xs" placeholder="Atk" value="1">
-                <span>/</span>
-                <input type="number" class="ab-token-hp input-xs" placeholder="HP" value="1">
-            </div>
-
-            <div class="mad-libs-line">
-                <span class="label-text">To:</span>
-                <select class="ab-target">${targets}</select>
-            </div>
-        `;
-
-        container.appendChild(row);
-
-        // --- 3. BIND EVENTS ---
-        this.bindEvents(row);
+    constructor() {
+        this.ui = {};
+        this.onSaveCallback = null;
     }
 
-    static bindEvents(row) {
-        // Remove Button
-        row.querySelector('.btn-remove').addEventListener('click', () => {
-            row.remove();
-            // Trigger global update (we dispatch an input event on the main form)
-            document.getElementById('cardForm').dispatchEvent(new Event('input'));
+    /**
+     * One-time setup to grab DOM elements and bind static listeners.
+     */
+    init() {
+        // Map DOM elements
+        this.ui = {
+            modal: document.getElementById('abilityModal'),
+            btnClose: document.getElementById('btnCloseAbility'),
+            btnConfirm: document.getElementById('btnConfirmAbility'),
+            
+            // Inputs
+            flavorName: document.getElementById('abModalName'),
+            trigger: document.getElementById('abModalTrigger'),
+            condition: document.getElementById('abModalCondition'),
+            condTribe: document.getElementById('abModalCondTribe'),
+            effect: document.getElementById('abModalEffect'),
+            target: document.getElementById('abModalTarget'),
+            
+            // Dynamic Inputs Container
+            effectInputs: document.getElementById('abEffectInputs'),
+            valInput: document.getElementById('abModalValue'),
+            kwSelect: document.getElementById('abModalKeyword'),
+            effTribeSelect: document.getElementById('abModalEffectTribe'),
+            
+            // Token Params
+            tokenBox: document.getElementById('abModalTokenParams'),
+            tokenName: document.getElementById('abModalTokenName'),
+            tokenAtk: document.getElementById('abModalTokenAtk'),
+            tokenHp: document.getElementById('abModalTokenHp'),
+
+            // Text Areas
+            descTrigger: document.getElementById('descTrigger'),
+            previewText: document.getElementById('abModalPreviewText')
+        };
+
+        this.bindEvents();
+    }
+
+    bindEvents() {
+        // Close / Save
+        this.ui.btnClose.addEventListener('click', () => this.close());
+        this.ui.btnConfirm.addEventListener('click', () => this.save());
+
+        // Change Listeners (Logic & Preview Updates)
+        const inputs = [
+            this.ui.flavorName, this.ui.trigger, this.ui.condition, 
+            this.ui.condTribe, this.ui.effect, this.ui.target,
+            this.ui.valInput, this.ui.kwSelect, this.ui.effTribeSelect,
+            this.ui.tokenName, this.ui.tokenAtk, this.ui.tokenHp
+        ];
+
+        inputs.forEach(el => {
+            el.addEventListener('input', () => this.updatePreview());
+            el.addEventListener('change', () => this.updateLogic()); // Heavy logic on change
+        });
+    }
+
+    /**
+     * Opens the modal and prepares it for a new ability.
+     * @param {Function} saveCallback - Function to call with the new Ability Object.
+     */
+    open(saveCallback) {
+        this.onSaveCallback = saveCallback;
+        this.populateDropdowns();
+        this.resetForm();
+        this.ui.modal.classList.remove('hidden');
+        this.updateLogic(); // Set initial visibility
+    }
+
+    close() {
+        this.ui.modal.classList.add('hidden');
+        this.onSaveCallback = null;
+    }
+
+    populateDropdowns() {
+        const createOpt = (val, text, dataset = {}) => {
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = text;
+            Object.entries(dataset).forEach(([k, v]) => opt.dataset[k] = v);
+            return opt;
+        };
+
+        // 1. Triggers
+        this.ui.trigger.innerHTML = '';
+        TRIGGERS.forEach(t => {
+            this.ui.trigger.appendChild(createOpt(t.id, t.name.en, { desc: t.description.en }));
         });
 
-        // 1. Condition Change -> Show/Hide Tribe Selector
-        const condSelect = row.querySelector('.ab-condition');
-        const condTribe = row.querySelector('.ab-cond-tribe');
+        // 2. Conditions (Generic + Tribal)
+        this.ui.condition.innerHTML = '';
+        this.ui.condition.appendChild(createOpt('none', 'No Condition'));
         
-        condSelect.addEventListener('change', () => {
-            const selected = condSelect.options[condSelect.selectedIndex];
-            if (selected.dataset.reqTribe === "true") {
-                condTribe.classList.remove('input-hidden');
+        const grpGen = document.createElement('optgroup');
+        grpGen.label = "Generic";
+        GENERIC_CONDITIONS.forEach(c => grpGen.appendChild(createOpt(c.id, c.name.en)));
+        this.ui.condition.appendChild(grpGen);
+
+        const grpTribe = document.createElement('optgroup');
+        grpTribe.label = "Tribal";
+        TRIBAL_CONDITIONS.forEach(c => {
+            // Check if tribal condition requires a param
+            grpTribe.appendChild(createOpt(c.id, c.name.en, { reqTribe: c.requiresParam }));
+        });
+        this.ui.condition.appendChild(grpTribe);
+
+        // 3. Effects
+        this.ui.effect.innerHTML = '';
+        EFFECTS.forEach(e => {
+            this.ui.effect.appendChild(createOpt(e.id, e.name.en, {
+                reqVal: e.requiresValue || false,
+                reqStats: e.requiresStats || false,
+                reqKeyword: e.requiresKeywordSelect || false,
+                reqTribe: e.requiresTribeSelect || false,
+                reqToken: e.requiresTokenName || false
+            }));
+        });
+
+        // 4. Targets
+        this.ui.target.innerHTML = '';
+        TARGETS.forEach(t => this.ui.target.appendChild(createOpt(t.id, t.name.en)));
+
+        // 5. Context Helpers (Tribes & Keywords)
+        const tribes = gm.getTribes();
+        
+        // Helper to fill tribe selects
+        const fillTribes = (el) => {
+            el.innerHTML = '';
+            tribes.forEach(t => el.appendChild(createOpt(t.id, t.name.en)));
+        };
+        fillTribes(this.ui.condTribe);
+        fillTribes(this.ui.effTribeSelect);
+
+        // Helper to fill keywords
+        this.ui.kwSelect.innerHTML = '';
+        KEYWORDS.forEach(k => this.ui.kwSelect.appendChild(createOpt(k.id, k.name.en)));
+    }
+
+    resetForm() {
+        this.ui.flavorName.value = '';
+        this.ui.trigger.selectedIndex = 0;
+        this.ui.condition.value = 'none';
+        this.ui.effect.selectedIndex = 0;
+        this.ui.target.selectedIndex = 0;
+        this.ui.valInput.value = 1;
+        this.ui.tokenName.value = '';
+        this.ui.tokenAtk.value = 1;
+        this.ui.tokenHp.value = 1;
+    }
+
+    /**
+     * Handles showing/hiding inputs based on current selections.
+     */
+    updateLogic() {
+        // 1. Update Description Help Text
+        const trigOpt = this.ui.trigger.options[this.ui.trigger.selectedIndex];
+        this.ui.descTrigger.textContent = trigOpt.dataset.desc || "";
+
+        // 2. Condition Logic
+        const condOpt = this.ui.condition.options[this.ui.condition.selectedIndex];
+        const condReqTribe = condOpt.dataset.reqTribe === "true";
+        
+        if (condReqTribe) this.ui.condTribe.classList.remove('input-hidden');
+        else this.ui.condTribe.classList.add('input-hidden');
+
+        // 3. Effect Logic
+        const effOpt = this.ui.effect.options[this.ui.effect.selectedIndex];
+        const d = effOpt.dataset;
+
+        // Reset all visibility
+        this.ui.valInput.classList.add('input-hidden');
+        this.ui.kwSelect.classList.add('input-hidden');
+        this.ui.effTribeSelect.classList.add('input-hidden');
+        this.ui.tokenBox.classList.add('input-hidden');
+
+        // Toggle specific inputs
+        if (d.reqVal === "true") {
+            this.ui.valInput.classList.remove('input-hidden');
+            this.ui.valInput.placeholder = "Value";
+        }
+        // "Give +X/+X" logic
+        if (d.reqStats === "true" && d.reqToken !== "true") {
+            this.ui.valInput.classList.remove('input-hidden');
+            this.ui.valInput.placeholder = "Stat Sum (+X/+X)";
+        }
+        if (d.reqKeyword === "true") {
+            this.ui.kwSelect.classList.remove('input-hidden');
+        }
+        if (d.reqTribe === "true") {
+            this.ui.effTribeSelect.classList.remove('input-hidden');
+        }
+        if (d.reqToken === "true") {
+            this.ui.tokenBox.classList.remove('input-hidden');
+        }
+
+        this.updatePreview();
+    }
+
+    /**
+     * Generates the readable text string for the modal preview.
+     */
+    updatePreview() {
+        const data = this.scrapeData();
+        let text = "";
+
+        // 1. Trigger / Flavor
+        if (data.flavorName) {
+            text += `<b>${data.flavorName}</b> `;
+            if (data.trigger !== 'passive') {
+                const trigName = TRIGGERS.find(t => t.id === data.trigger)?.name.en;
+                text += `(${trigName}): `;
             } else {
-                condTribe.classList.add('input-hidden');
+                text += `: `;
             }
-        });
+        } else {
+            const trigName = TRIGGERS.find(t => t.id === data.trigger)?.name.en;
+            if (data.trigger !== 'passive') text += `<b>${trigName}:</b> `;
+        }
 
-        // 2. Effect Change -> Show/Hide Inputs
-        const effectSelect = row.querySelector('.ab-effect');
-        const valInput = row.querySelector('.ab-value');
-        const kwSelect = row.querySelector('.ab-keyword');
-        const tribeSelect = row.querySelector('.ab-effect-tribe');
-        const tokenLine = row.querySelector('.token-line');
+        // 2. Condition
+        if (data.condition) {
+            let condName = "";
+            const genC = GENERIC_CONDITIONS.find(c => c.id === data.condition);
+            const tribeC = TRIBAL_CONDITIONS.find(c => c.id === data.condition);
+            
+            if (genC) condName = genC.name.en;
+            if (tribeC) {
+                condName = tribeC.name.en;
+                // Replace [Tribe]
+                const tribeName = gm.getTribes().find(t => t.id === data.conditionParam)?.name || "Tribe";
+                condName = condName.replace("[Tribe]", tribeName);
+            }
+            text += `<i>${condName},</i> `;
+        }
 
-        effectSelect.addEventListener('change', () => {
-            const opt = effectSelect.options[effectSelect.selectedIndex];
-            const d = opt.dataset;
+        // 3. Effect
+        const effDef = EFFECTS.find(e => e.id === data.effect);
+        let effText = effDef ? effDef.name.en : "Do Effect";
 
-            // Reset visibility
-            valInput.classList.add('input-hidden');
-            kwSelect.classList.add('input-hidden');
-            tribeSelect.classList.add('input-hidden');
-            tokenLine.classList.add('input-hidden');
+        // Substitutions
+        if (data.keyword) {
+            const kwName = KEYWORDS.find(k => k.id === data.keyword)?.name || "Keyword";
+            effText = `Give ${kwName}`; // Simplified text override
+        } else if (data.effectTribe) {
+            const trName = gm.getTribes().find(t => t.id === data.effectTribe)?.name || "Tribe";
+            effText = effText.replace("[Tribe]", trName);
+        } else if (data.tokenData) {
+            effText = `Summon a ${data.tokenData.attack}/${data.tokenData.health} ${data.tokenData.name}`;
+        } else if (effText.includes("X")) {
+            effText = effText.replace("X", data.value);
+        } else if (effDef && effDef.requiresValue) {
+            effText += ` ${data.value}`;
+        }
 
-            // Toggle based on flags
-            if (d.reqVal === "true") {
-                valInput.classList.remove('input-hidden');
-                valInput.placeholder = "Value";
-            }
-            if (d.reqStats === "true" && d.reqToken !== "true") {
-                // E.g. Give +X/+X (Uses single value for now, or we can expand)
-                // For simplified "Give Stats", we often treat Value as total stats or just +X/+X
-                // Let's reuse valInput for single number stat buffs for now
-                valInput.classList.remove('input-hidden'); 
-                valInput.placeholder = "Stat Sum";
-            }
-            if (d.reqKeyword === "true") {
-                kwSelect.classList.remove('input-hidden');
-            }
-            if (d.reqTribe === "true") {
-                tribeSelect.classList.remove('input-hidden');
-            }
-            if (d.reqToken === "true") {
-                tokenLine.classList.remove('input-hidden');
-            }
-        });
+        text += effText;
 
-        // Initial Trigger
-        effectSelect.dispatchEvent(new Event('change'));
-        condSelect.dispatchEvent(new Event('change'));
+        // 4. Target
+        const targDef = TARGETS.find(t => t.id === data.target);
+        if (targDef && targDef.id !== 'none') {
+            text += ` to ${targDef.name.en}`;
+        }
+
+        text += ".";
+        this.ui.previewText.innerHTML = text;
     }
 
     /**
-     * Scrapes all rows in the container and returns the Ability Data Array.
+     * Collects form data into the Ability Object Structure.
      */
-    static getAbilities(container) {
-        const rows = container.querySelectorAll('.ability-row');
-        const abilities = [];
+    scrapeData() {
+        const tokenName = this.ui.tokenName.value || "Token";
+        const tokenAtk = parseInt(this.ui.tokenAtk.value) || 1;
+        const tokenHp = parseInt(this.ui.tokenHp.value) || 1;
 
-        rows.forEach(row => {
-            const flavorName = row.querySelector('.ab-flavor-name').value;
-            const trigger = row.querySelector('.ab-trigger').value;
-            const target = row.querySelector('.ab-target').value;
-            
-            // Condition Logic
-            let condition = row.querySelector('.ab-condition').value;
-            if (condition === 'none') condition = undefined;
-            const conditionParam = row.querySelector('.ab-cond-tribe').value; // Tribe ID
+        // Check if token logic is active to determine 'value' for math
+        const effId = this.ui.effect.value;
+        const effDef = EFFECTS.find(e => e.id === effId);
+        
+        let calculatedValue = parseInt(this.ui.valInput.value) || 0;
+        
+        // Special case: For tokens, the 'value' passed to math engine is sum of stats
+        let tokenData = null;
+        if (effDef && effDef.requiresTokenName) {
+            calculatedValue = tokenAtk + tokenHp;
+            tokenData = { name: tokenName, attack: tokenAtk, health: tokenHp };
+        }
 
-            // Effect Logic
-            const effectSelect = row.querySelector('.ab-effect');
-            const effectId = effectSelect.value;
-            
-            // Extract Values based on visibility
-            let value = parseInt(row.querySelector('.ab-value').value) || 0;
-            const keyword = row.querySelector('.ab-keyword').value;
-            const effectTribe = row.querySelector('.ab-effect-tribe').value;
-            
-            // Token Data
-            const tokenName = row.querySelector('.ab-token-name').value;
-            const tokenAtk = parseInt(row.querySelector('.ab-token-atk').value) || 0;
-            const tokenHp = parseInt(row.querySelector('.ab-token-hp').value) || 0;
+        return {
+            flavorName: this.ui.flavorName.value,
+            trigger: this.ui.trigger.value,
+            condition: this.ui.condition.value === 'none' ? undefined : this.ui.condition.value,
+            conditionParam: this.ui.condTribe.value,
+            effect: effId,
+            target: this.ui.target.value,
+            value: calculatedValue, // The number used for cost calc
+            keyword: this.ui.kwSelect.value,
+            effectTribe: this.ui.effTribeSelect.value,
+            tokenData: tokenData
+        };
+    }
 
-            // If it's a token summon, 'value' for the calculator is Sum of Stats
-            if (!row.querySelector('.token-line').classList.contains('input-hidden')) {
-                value = tokenAtk + tokenHp;
-            }
-
-            abilities.push({
-                flavorName,
-                trigger,
-                target,
-                condition,
-                conditionParam, // New: Stores the specific tribe for the condition
-                effect: effectId,
-                value,
-                keyword,
-                effectTribe,
-                tokenData: { name: tokenName, attack: tokenAtk, health: tokenHp }
-            });
-        });
-
-        return abilities;
+    save() {
+        if (this.onSaveCallback) {
+            const data = this.scrapeData();
+            this.onSaveCallback(data);
+        }
+        this.close();
     }
 }
+
+// Export Singleton
+export const abilityBuilder = new AbilityBuilder();
