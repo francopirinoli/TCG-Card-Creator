@@ -2,6 +2,7 @@ import { KEYWORDS } from '../data/keywords.js';
 import { TRIGGERS, TARGETS, EFFECTS, GENERIC_CONDITIONS } from '../data/abilities.js';
 import { TRIBAL_CONDITIONS } from '../data/tribal_rules.js';
 import { gm } from './GameManager.js';
+import { lang } from './LanguageManager.js';
 
 export class AbilityBuilder {
     constructor() {
@@ -24,7 +25,7 @@ export class AbilityBuilder {
             effect: document.getElementById('abModalEffect'),
             target: document.getElementById('abModalTarget'),
             
-            // Dynamic Inputs Container
+            // Dynamic Inputs
             effectInputs: document.getElementById('abEffectInputs'),
             valInput: document.getElementById('abModalValue'),
             kwSelect: document.getElementById('abModalKeyword'),
@@ -69,6 +70,7 @@ export class AbilityBuilder {
 
     open(saveCallback) {
         this.onSaveCallback = saveCallback;
+        // Re-populate dropdowns to ensure current language is used
         this.populateDropdowns();
         this.resetForm();
         this.ui.modal.classList.remove('hidden');
@@ -89,37 +91,32 @@ export class AbilityBuilder {
             return opt;
         };
 
-        // Helper to safely get English text
-        const getEn = (obj) => obj?.name?.en || obj?.name || "Unknown";
-        const getDesc = (obj) => obj?.description?.en || "";
-
         // 1. Triggers
         this.ui.trigger.innerHTML = '';
         TRIGGERS.forEach(t => {
-            this.ui.trigger.appendChild(createOpt(t.id, getEn(t), { desc: getDesc(t) }));
+            this.ui.trigger.appendChild(createOpt(t.id, lang.translate(t.name), { desc: lang.translate(t.description) }));
         });
 
         // 2. Conditions
         this.ui.condition.innerHTML = '';
-        this.ui.condition.appendChild(createOpt('none', 'No Condition'));
+        this.ui.condition.appendChild(createOpt('none', lang.getText('ui_ab_opt_none')));
         
         const grpGen = document.createElement('optgroup');
-        grpGen.label = "Generic";
-        GENERIC_CONDITIONS.forEach(c => grpGen.appendChild(createOpt(c.id, getEn(c))));
+        grpGen.label = lang.getText('ui_ab_grp_generic');
+        GENERIC_CONDITIONS.forEach(c => grpGen.appendChild(createOpt(c.id, lang.translate(c.name))));
         this.ui.condition.appendChild(grpGen);
 
         const grpTribe = document.createElement('optgroup');
-        grpTribe.label = "Tribal";
+        grpTribe.label = lang.getText('ui_ab_grp_tribal');
         TRIBAL_CONDITIONS.forEach(c => {
-            // Note: requiresParam matches the flag in tribal_rules.js
-            grpTribe.appendChild(createOpt(c.id, getEn(c), { reqTribe: c.requiresParam }));
+            grpTribe.appendChild(createOpt(c.id, lang.translate(c.name), { reqTribe: c.requiresParam }));
         });
         this.ui.condition.appendChild(grpTribe);
 
         // 3. Effects
         this.ui.effect.innerHTML = '';
         EFFECTS.forEach(e => {
-            this.ui.effect.appendChild(createOpt(e.id, getEn(e), {
+            this.ui.effect.appendChild(createOpt(e.id, lang.translate(e.name), {
                 reqVal: e.requiresValue || false,
                 reqStats: e.requiresStats || false,
                 reqKeyword: e.requiresKeywordSelect || false,
@@ -130,19 +127,19 @@ export class AbilityBuilder {
 
         // 4. Targets
         this.ui.target.innerHTML = '';
-        TARGETS.forEach(t => this.ui.target.appendChild(createOpt(t.id, getEn(t))));
+        TARGETS.forEach(t => this.ui.target.appendChild(createOpt(t.id, lang.translate(t.name))));
 
         // 5. Context Helpers
         const tribes = gm.getTribes();
         const fillTribes = (el) => {
             el.innerHTML = '';
-            tribes.forEach(t => el.appendChild(createOpt(t.id, t.name)));
+            tribes.forEach(t => el.appendChild(createOpt(t.id, lang.translate(t.name)))); // Tribes can have names in config, but defaults have en/es
         };
         fillTribes(this.ui.condTribe);
         fillTribes(this.ui.effTribeSelect);
 
         this.ui.kwSelect.innerHTML = '';
-        KEYWORDS.forEach(k => this.ui.kwSelect.appendChild(createOpt(k.id, k.name)));
+        KEYWORDS.forEach(k => this.ui.kwSelect.appendChild(createOpt(k.id, lang.translate(k.name))));
     }
 
     resetForm() {
@@ -181,7 +178,7 @@ export class AbilityBuilder {
         this.ui.effTribeSelect.classList.add('input-hidden');
         this.ui.tokenBox.classList.add('input-hidden');
 
-        // Toggle specific inputs based on dataset flags from populateDropdowns
+        // Toggle specific inputs based on dataset flags
         if (d.reqVal === "true") {
             this.ui.valInput.classList.remove('input-hidden');
             this.ui.valInput.placeholder = "Value";
@@ -205,22 +202,22 @@ export class AbilityBuilder {
 
     updatePreview() {
         const data = this.scrapeData();
-        const getEn = (obj) => obj?.name?.en || obj?.name || "";
-
+        
         let text = "";
         
         // Trigger
+        const trig = TRIGGERS.find(t => t.id === data.trigger);
+        const trigName = lang.translate(trig?.name) || "Ability";
+
         if (data.flavorName) {
             text += `<b>${data.flavorName}</b>`;
             if (data.trigger !== 'passive') {
-                const trig = TRIGGERS.find(t => t.id === data.trigger);
-                text += ` (${getEn(trig)}): `;
+                text += ` (${trigName}): `;
             } else {
                 text += `: `;
             }
         } else {
-            const trig = TRIGGERS.find(t => t.id === data.trigger);
-            if (data.trigger !== 'passive') text += `<b>${getEn(trig)}:</b> `;
+            if (data.trigger !== 'passive') text += `<b>${trigName}:</b> `;
         }
 
         // Condition
@@ -229,10 +226,11 @@ export class AbilityBuilder {
             const genC = GENERIC_CONDITIONS.find(c => c.id === data.condition);
             const tribeC = TRIBAL_CONDITIONS.find(c => c.id === data.condition);
             
-            if (genC) condName = getEn(genC);
+            if (genC) condName = lang.translate(genC.name);
             if (tribeC) {
-                condName = getEn(tribeC);
-                const tribeName = gm.getTribes().find(t => t.id === data.conditionParam)?.name || "Tribe";
+                condName = lang.translate(tribeC.name);
+                const tribeObj = gm.getTribes().find(t => t.id === data.conditionParam);
+                const tribeName = lang.translate(tribeObj?.name) || "Tribe";
                 condName = condName.replace("[Tribe]", tribeName);
             }
             text += `<i>${condName},</i> `;
@@ -240,16 +238,27 @@ export class AbilityBuilder {
 
         // Effect
         const effDef = EFFECTS.find(e => e.id === data.effect);
-        let effText = effDef ? getEn(effDef) : "Do Effect";
+        let effText = effDef ? lang.translate(effDef.name) : "Do Effect";
 
         if (data.keyword) {
-            const kName = KEYWORDS.find(k => k.id === data.keyword)?.name || "Keyword";
-            effText = `Give ${kName}`;
+            const kwObj = KEYWORDS.find(k => k.id === data.keyword);
+            const kName = lang.translate(kwObj?.name) || "Keyword";
+            // Hard to translate "Give" dynamically without complex logic, so we simplify
+            // "Give Keyword" -> "Dar Provocar" works if effText is "Dar Palabra Clave"
+            // We assume effText is e.g. "Give Keyword", we replace "Keyword" with specific one
+            // Or simplified replacement:
+            effText = effText.replace("Keyword", kName).replace("Palabra Clave", kName);
         } else if (data.effectTribe) {
-            const trName = gm.getTribes().find(t => t.id === data.effectTribe)?.name || "Tribe";
-            effText = effText.replace("[Tribe]", trName);
+            const trObj = gm.getTribes().find(t => t.id === data.effectTribe);
+            const trName = lang.translate(trObj?.name) || "Tribe";
+            effText = effText.replace("[Tribe]", trName).replace("[Tribu]", trName);
         } else if (data.tokenData) {
-            effText = `Summon a ${data.tokenData.attack}/${data.tokenData.health} ${data.tokenData.name}`;
+            // Localization for "Summon a" is hard. We can construct it:
+            // "Summon Token" -> "Summon a 2/2 Zombie"
+            // "Invocar Ficha" -> "Invoca un Zombi 2/2"
+            // For now, appending string:
+            const tokenStr = `${data.tokenData.attack}/${data.tokenData.health} ${data.tokenData.name}`;
+            effText = effText.replace("Token", tokenStr).replace("Ficha", tokenStr);
         } else if (effText.includes("X")) {
             effText = effText.replace("X", data.value);
         } else if (effDef && effDef.requiresValue) {
@@ -261,7 +270,8 @@ export class AbilityBuilder {
         // Target
         const targDef = TARGETS.find(t => t.id === data.target);
         if (targDef && targDef.id !== 'none') {
-            text += ` to ${getEn(targDef)}`;
+            const prep = lang.code === 'es' ? " a " : " to ";
+            text += `${prep}${lang.translate(targDef.name)}`;
         }
 
         this.ui.previewText.innerHTML = text + ".";

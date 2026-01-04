@@ -1,215 +1,346 @@
-/* --- The Physical Card Layout --- */
-.card-frame {
-    width: 300px;
-    height: 420px;
-    background-color: #2e2e2e;
-    border: 8px solid #555;
-    border-radius: 18px; /* Slightly rounded card corners */
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 5px 5px 15px rgba(0,0,0,0.6);
-    user-select: none;
-    overflow: hidden;
-    font-family: 'Roboto', sans-serif;
+/* --- VARIABLES --- */
+:root {
+    --card-width: 375px;
+    --card-height: 525px;
+    
+    /* OSR Color Palette */
+    --osr-border: #1a1510;
+    --osr-gold: #c5a059;
+    --osr-text: #2b221b;
+    --osr-red: #8a1c1c;
+    --osr-green: #3d6e38;
 }
 
-/* Rarity Borders (The frame color) */
-.rarity-common { border-color: #a0a0a0; }
-.rarity-rare { border-color: #0070dd; }
-.rarity-epic { border-color: #a335ee; }
-.rarity-legendary { border-color: #ff8000; }
-
-/* Spell/Weapon Frame Tweaks (Optional Flair) */
-.type-spell { border-radius: 30px; } /* Rounder frame for spells */
-
-/* --- Header Section --- */
-.card-header {
-    height: 45px;
+/* --- MAIN FRAME --- */
+.card-frame {
+    width: var(--card-width);
+    height: var(--card-height);
     position: relative;
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 
+        0 0 0 2px #111,
+        10px 20px 40px rgba(0,0,0,0.6);
+    background-color: #111;
+    font-family: 'Cinzel', serif;
+    user-select: none;
+    
+    transform-style: preserve-3d;
+    
+    /* REMOVED: transition: transform 0.1s ease-out; */
+    /* We handle movement via JS, so we don't want CSS interfering/lagging */
+    will-change: transform; 
+}
+
+/* --- 1. FULL ART LAYER --- */
+.card-art-layer {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 0;
+    background: #222;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-art-layer img {
+    width: auto; height: auto;
+    min-width: 100%; min-height: 100%;
+    transform-origin: center center;
+    will-change: transform;
+}
+
+#previewArtPlaceholder {
+    width: 100%; height: 100%;
+    background: 
+        radial-gradient(circle, #333 0%, #000 100%);
+    opacity: 0.8;
+}
+
+/* --- 2. OVERLAY (Texture/Vignette) --- */
+.card-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    /* Heavy vignette to make text pop */
+    background: radial-gradient(circle at 50% 40%, transparent 30%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.8) 100%);
+    border: 10px solid var(--osr-border);
+    border-radius: 22px;
+    pointer-events: none;
+}
+
+/* --- 3. UI LAYOUT --- */
+.card-ui-layout {
+    position: absolute;
+    inset: 0;
     z-index: 10;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 15px;
+}
+
+/* --- HEADER --- */
+.card-header-row {
+    display: flex;
+    align-items: center;
+    position: relative;
+    height: 55px;
     margin-top: 5px;
 }
 
 .mana-gem {
-    position: absolute;
-    top: -5px;
-    left: -5px;
-    width: 45px;
-    height: 45px;
-    background: radial-gradient(circle at 30% 30%, #4dd0e1, #006064);
+    width: 50px;
+    height: 50px;
+    background: radial-gradient(circle at 35% 35%, #4facfe 0%, #00f2fe 100%);
+    border: 3px solid #fff;
     border-radius: 50%;
-    border: 2px solid #fff;
-    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    box-shadow: 0 0 15px rgba(0,242,254, 0.4), 0 4px 8px rgba(0,0,0,0.6);
     display: flex;
     align-items: center;
     justify-content: center;
-    
-    font-family: 'Cinzel', serif;
-    font-size: 24px;
+    font-size: 30px;
     font-weight: 900;
     color: white;
-    text-shadow: 2px 2px 0 #000;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
     z-index: 20;
 }
 
-.card-name-plate {
-    margin-left: 30px;
-    margin-right: 10px;
-    height: 35px;
+.name-ribbon {
+    flex: 1;
+    height: 40px;
     background: linear-gradient(to bottom, #444, #222);
-    border: 2px solid #999;
-    border-radius: 0 10px 10px 0; /* Flag shape */
+    margin-left: -15px;
+    margin-right: 10px;
+    padding-left: 25px;
+    padding-right: 35px; /* Space for Rarity Jewel */
+    
+    border: 2px solid #888;
+    border-radius: 0 8px 8px 0;
+    
     display: flex;
     align-items: center;
-    justify-content: center;
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+    box-shadow: 3px 3px 10px rgba(0,0,0,0.5);
+    position: relative;
 }
 
-.card-name-plate span {
-    color: white;
-    font-family: 'Cinzel', serif;
+.name-ribbon span {
+    color: #f0f0f0;
+    font-size: 1.15rem;
     font-weight: 700;
-    font-size: 1.1rem;
-    text-transform: uppercase;
-    text-shadow: 1px 1px 2px black;
+    letter-spacing: 1px;
+    text-shadow: 1px 1px 2px #000;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 95%;
-}
-
-/* --- Art Layer --- */
-.card-art-layer {
-    flex: 1; /* Takes up remaining space */
-    background: #111;
-    margin: 5px 12px;
-    border: 3px solid #1a1a1a;
-    border-radius: 8px 8px 0 0;
-    position: relative;
-    overflow: hidden;
-    box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
-    min-height: 160px;
-}
-
-.card-art-layer img {
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+}
+
+/* Rarity Jewel */
+.rarity-gem {
+    width: 28px;
+    height: 28px;
+    background: #777;
+    border: 2px solid #fff;
+    transform: rotate(45deg); /* Diamond shape */
     position: absolute;
-    top: 0;
-    left: 0;
+    right: 0;
+    top: 11px;
+    z-index: 25;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.8);
 }
 
-#previewArtPlaceholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #444;
-    font-family: 'Cinzel', serif;
-    font-size: 1.5rem;
-    background: radial-gradient(circle, #222 10%, #000 90%);
-}
+.gem-common { background: #999; border-color: #ccc; }
+.gem-rare { background: #0070dd; border-color: #69b4ff; }
+.gem-epic { background: #a335ee; border-color: #d696ff; }
+.gem-legendary { background: #ff8000; border-color: #ffd700; }
 
-/* --- Type Bar (Ribbon) --- */
-.card-type-bar {
-    height: 24px;
-    background: #1a1a1a;
-    margin: 0 15px;
+/* --- BOTTOM SECTION --- */
+.card-bottom-panel {
     position: relative;
-    top: -2px; /* Overlap art slightly */
-    z-index: 5;
-    border: 2px solid #000;
     display: flex;
+    flex-direction: column;
     align-items: center;
+    margin-bottom: 5px; /* Space from bottom edge */
+}
+
+/* Tribe Banner */
+.type-ribbon {
+    background: linear-gradient(to bottom, #d4af37, #a67c00);
+    padding: 4px 30px;
+    /* Banner shape with swallowtail ends */
+    clip-path: polygon(0 0, 100% 0, 95% 50%, 100% 100%, 0 100%, 5% 50%);
+    
+    position: absolute;
+    top: -14px;
+    z-index: 20;
+    
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    width: 200px;
+    display: flex;
     justify-content: center;
-    color: #ddd;
-    font-size: 0.8rem;
+}
+
+.type-ribbon span {
+    color: #2b1d0e;
+    font-weight: 900;
+    font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 1px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    text-shadow: 0 1px 0 rgba(255,255,255,0.4);
 }
 
-/* --- Text Box (Parchment) --- */
+/* Text Box */
 .card-text-box {
-    height: 130px;
-    background-color: #e3dcd2;
-    /* Parchment texture simulation */
-    background-image: 
-        linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
-        radial-gradient(#d7c4bb 15%, transparent 16%);
-    background-size: 100% 3px, 4px 4px;
+    /* 1. Base Color: Comes from JS Tribe settings */
+    background-color: var(--tribe-color, #e3dac1);
     
-    color: #1a1a1a;
-    padding: 12px;
-    margin: 0 12px 12px 12px;
-    border: 3px solid #333;
-    border-radius: 0 0 8px 8px;
-    text-align: center;
+    /* 2. Texture & Tinting 
+       - Layer 1 (Top): Paper Texture
+       - Layer 2 (Middle): Heavy White overlay (93% opacity). 
+         This washes out the tribe color so it becomes a subtle pastel tint.
+    */
+    background-image: 
+        url("https://www.transparenttextures.com/patterns/aged-paper.png"),
+        linear-gradient(rgba(255,255,255,0.93), rgba(255,255,255,0.93));
+    
+    /* Multiply texture onto the white; Normal blending for white onto color */
+    background-blend-mode: multiply, normal;
+    
+    width: 100%;
+    min-height: 150px;
+    
+    border: 3px solid var(--osr-border);
+    border-radius: 12px;
+    
+    /* Shadows */
+    box-shadow: 
+        inset 0 0 20px rgba(0,0,0,0.1), 
+        0 5px 15px rgba(0,0,0,0.8);
+    
+    /* Padding to avoid stats overlap */
+    padding: 25px 35px 20px 35px; 
+    
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    box-shadow: inset 0 0 20px rgba(139, 69, 19, 0.2);
+    text-align: center;
+    
+    position: relative;
+    z-index: 10;
 }
 
 .rules-text {
-    font-size: 0.9rem;
-    line-height: 1.3;
-    font-weight: 500;
+    font-family: 'Roboto', sans-serif;
+    color: #000000; /* Pure Black */
+    font-size: 0.95rem;
+    line-height: 1.35;
+    font-weight: 600; /* Slightly bolder */
+    text-shadow: none; /* Remove any shadows that might blur it */
+    
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
+    margin: 0;
+    overflow: hidden;
 }
 
-.rules-text b {
-    font-weight: 900;
+.rules-text b { 
+    font-weight: 900; 
+    color: #000;
+}
+
+.rules-text i { 
+    font-family: 'Lora', serif; 
+    font-weight: 700; /* Bold italics for readability */
+    color: #222; 
+}
+
+.flavor-separator {
+    width: 60px;
+    height: 2px;
+    background: rgba(0,0,0,0.4); /* Darker separator */
+    margin: 8px 0;
 }
 
 .flavor-text {
-    margin-top: 8px;
     font-family: 'Lora', serif;
     font-style: italic;
-    color: #666;
+    color: #333; /* Dark Grey for flavor */
+    font-weight: 500;
     font-size: 0.75rem;
-    line-height: 1.1;
 }
 
-/* --- Footer (Stats) --- */
+/* --- STATS (Circles) --- */
 .card-footer {
+    width: 100%;
+    height: 0;
     position: relative;
-    height: 35px;
-    margin-top: -25px; /* Pull gems up into text box */
-    z-index: 20;
+    z-index: 30; /* Above text box */
 }
 
-.stat-gem {
+.stat-box {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%; /* Perfect Circle */
     position: absolute;
-    bottom: 5px;
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
+    bottom: -10px; /* Overhang the text box slightly */
+    
     display: flex;
     align-items: center;
     justify-content: center;
     
-    font-family: 'Cinzel', serif;
-    font-size: 26px;
+    font-size: 32px;
     font-weight: 900;
     color: white;
+    text-shadow: 0 2px 4px #000;
+    
     border: 3px solid #fff;
-    text-shadow: 2px 2px 0 #000;
-    box-shadow: 0 4px 5px rgba(0,0,0,0.5);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.7);
 }
 
-.attack { 
-    background: radial-gradient(circle at 30% 30%, #ffeb3b, #f44336); /* Yellow highlight on Red */
-    left: 5px; 
+.attack {
+    left: -8px; /* Offset to corner */
+    background: radial-gradient(circle at 35% 35%, #ffeb3b, #d32f2f);
 }
 
-.health { 
-    background: radial-gradient(circle at 30% 30%, #69f0ae, #2e7d32); /* Light green on Dark green */
-    right: 5px; 
+.health {
+    right: -8px; /* Offset to corner */
+    background: radial-gradient(circle at 35% 35%, #b2ff59, #2e7d32);
 }
 
-/* Hide Stats for Spells */
-.type-spell .card-footer { display: none; }
+/* Weapon Variant */
+.type-weapon .health {
+    background: radial-gradient(circle at 35% 35%, #e0e0e0, #616161);
+    /* Optional: Make durability a shield shape? Or stick to circle for consistency */
+    /* border-radius: 10% 10% 50% 50%; */ 
+}
+
+/* Spell Variant */
+.type-spell .stat-box { display: none; }
+.type-spell .card-text-box {
+    min-height: 180px;
+    padding-bottom: 40px;
+    border-radius: 12px 12px 30px 30px; /* Scroll look */
+}
+
+/* --- GLARE --- */
+.card-glare {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+    border-radius: 22px;
+    background: radial-gradient(
+        farthest-corner at var(--mx) var(--my),
+        rgba(255, 255, 255, 0.5) 0%,
+        rgba(255, 255, 255, 0.1) 20%,
+        transparent 60%
+    );
+    opacity: 0.4;
+    mix-blend-mode: overlay;
+}

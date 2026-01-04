@@ -359,3 +359,127 @@ input[type="color"] {
     background: #1a1a1a;
     border-radius: 0 0 8px 8px;
 }
+
+/* Art Controls */
+.art-controls {
+    background: #1a1a1a;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #333;
+    margin-top: 5px;
+}
+
+.control-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.control-row span {
+    width: 20px;
+    text-align: center;
+    color: #888;
+    font-size: 1.2rem;
+}
+
+.control-row input[type="range"] {
+    flex: 1;
+    padding: 0;
+    cursor: pointer;
+}
+
+.stat-row-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.stat-val-display {
+    background: #333;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: var(--accent-color);
+    font-weight: bold;
+    font-family: monospace;
+}
+
+/* Custom Range Slider Styling */
+input[type=range] {
+    width: 100%;
+    background: transparent;
+    margin: 5px 0;
+}
+
+input[type=range]:focus { outline: none; }
+
+/* The Track */
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 6px;
+    cursor: pointer;
+    background: #444;
+    border-radius: 3px;
+    border: 1px solid #222;
+}
+
+/* The Thumb (Handle) */
+input[type=range]::-webkit-slider-thumb {
+    height: 18px;
+    width: 18px;
+    border-radius: 50%;
+    background: var(--btn-primary-bg);
+    cursor: pointer;
+    -webkit-appearance: none;
+    margin-top: -7px; /* Center on track */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    transition: transform 0.1s;
+}
+
+input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    background: white;
+}
+
+/* --- KEYWORD UX --- */
+/* Helper text below checkboxes */
+.keyword-block {
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    background: #252525;
+    border-radius: 4px;
+    border: 1px solid #333;
+    transition: background-color 0.2s;
+}
+
+.keyword-block:hover {
+    background: #2f2f2f;
+}
+
+.keyword-label-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.keyword-description {
+    margin-left: 24px; /* Align with text, skipping checkbox */
+    font-size: 0.75rem;
+    color: #888;
+    font-style: italic;
+    margin-top: 4px;
+    line-height: 1.2;
+}
+
+/* Update grid to handle larger blocks */
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: 1fr; /* 1 column for better reading of descriptions */
+    gap: 8px;
+    background: transparent;
+    border: none;
+    padding: 0;
+}

@@ -24,116 +24,162 @@
         <aside class="editor-pane">
             <header>
                 <div class="header-top">
-                    <h1>Card Forge</h1>
-                    <button id="btnOpenSettings" class="btn-icon" type="button">⚙️ Config</button>
+                    <h1 data-i18n="ui_title">Card Forge</h1>
+                    <div class="header-actions">
+                        <!-- Language Toggle -->
+                        <button id="btnToggleLang" class="btn-icon" data-i18n="ui_btn_lang">🇪🇸 ES</button>
+                        <button id="btnOpenSettings" class="btn-icon" type="button" data-i18n="ui_btn_config">⚙️ Config</button>
+                    </div>
                 </div>
-                <p>Universal TCG Generator</p>
+                <p data-i18n="ui_subtitle">Universal TCG Generator</p>
             </header>
 
             <form id="cardForm" onsubmit="return false;">
                 <!-- 1. Identity -->
                 <section class="form-group">
-                    <label for="cardName">Name</label>
-                    <input type="text" id="cardName" placeholder="Card Name" value="New Hero">
+                    <label for="cardName" data-i18n="ui_label_name">Name</label>
+                    <input type="text" id="cardName" data-i18n-placeholder="ui_placeholder_name" placeholder="Card Name" value="New Hero">
                 </section>
 
                 <section class="form-group two-col">
                     <div>
-                        <label for="cardType">Type</label>
+                        <label for="cardType" data-i18n="ui_label_type">Type</label>
                         <select id="cardType">
-                            <option value="minion">Minion</option>
-                            <option value="spell">Spell</option>
-                            <option value="weapon">Weapon</option>
+                            <option value="minion" data-i18n="ui_type_minion">Minion</option>
+                            <option value="spell" data-i18n="ui_type_spell">Spell</option>
+                            <option value="weapon" data-i18n="ui_type_weapon">Weapon</option>
                         </select>
                     </div>
                     <div>
-                        <label for="cardRarity">Rarity</label>
+                        <label for="cardRarity" data-i18n="ui_label_rarity">Rarity</label>
                         <select id="cardRarity"></select>
                     </div>
                 </section>
 
                 <section class="form-group">
-                    <label for="cardTribe">Tribe / Faction</label>
+                    <label for="cardTribe" data-i18n="ui_label_tribe">Tribe / Faction</label>
                     <select id="cardTribe"></select>
                 </section>
 
                 <!-- 2. Visuals -->
                 <section class="form-group">
-                    <label for="imageUpload">Card Art</label>
+                    <label for="imageUpload" data-i18n="ui_label_art">Card Art</label>
                     <input type="file" id="imageUpload" accept="image/*">
+                    
+                    <!-- Art Controls -->
+                    <div id="artControls" class="art-controls input-hidden">
+                        <div class="control-row">
+                            <span title="Horizontal Position">↔</span>
+                            <input type="range" id="artX" min="-300" max="300" value="0">
+                        </div>
+                        <div class="control-row">
+                            <span title="Vertical Position">↕</span>
+                            <input type="range" id="artY" min="-300" max="300" value="0">
+                        </div>
+                        <div class="control-row">
+                            <span title="Zoom Level">🔍</span>
+                            <input type="range" id="artZoom" min="10" max="300" value="100">
+                        </div>
+                    </div>
                 </section>
 
                 <!-- 3. Stats -->
                 <section class="form-group two-col" id="stats-section">
                     <div>
-                        <label>Attack: <span id="val-attack">0</span></label>
+                        <div class="stat-row-header">
+                            <label data-i18n="ui_label_attack">Attack</label>
+                            <span id="val-attack" class="stat-val-display">0</span>
+                        </div>
                         <input type="range" id="statAttack" min="0" max="12" value="0">
                     </div>
                     <div>
-                        <label><span id="lbl-health">Health</span>: <span id="val-health">1</span></label>
+                        <div class="stat-row-header">
+                            <label id="lbl-health" data-i18n="ui_label_health">Health</label>
+                            <span id="val-health" class="stat-val-display">1</span>
+                        </div>
                         <input type="range" id="statHealth" min="1" max="12" value="1">
                     </div>
                 </section>
 
                 <!-- 4. Keywords -->
                 <section class="form-group">
-                    <label>Keywords</label>
+                    <label data-i18n="ui_label_keywords">Keywords</label>
                     <div id="keyword-container" class="checkbox-grid"></div>
                 </section>
 
-                <!-- 5. Abilities (Summary View) -->
+                <!-- 5. Abilities -->
                 <section class="form-group">
-                    <label>Abilities</label>
-                    <div id="abilitiesListSummary" class="ability-summary-list">
-                        <!-- Added abilities appear here as small blocks -->
-                    </div>
-                    <button type="button" id="btnOpenAbilityModal" class="btn-secondary">+ Add New Ability</button>
+                    <label data-i18n="ui_label_abilities">Abilities</label>
+                    <div id="abilitiesListSummary" class="ability-summary-list"></div>
+                    <button type="button" id="btnOpenAbilityModal" class="btn-secondary" data-i18n="ui_btn_add_ability">+ Add New Ability</button>
                 </section>
 
                 <!-- 6. Flavor -->
                 <section class="form-group">
-                    <label for="cardFlavor">Flavor Text</label>
-                    <textarea id="cardFlavor" rows="2" placeholder="Lore text..."></textarea>
+                    <label for="cardFlavor" data-i18n="ui_label_flavor">Flavor Text</label>
+                    <textarea id="cardFlavor" rows="2" data-i18n-placeholder="ui_placeholder_flavor" placeholder="Lore text..."></textarea>
                 </section>
             </form>
         </aside>
 
         <!-- RIGHT COLUMN: PREVIEW -->
         <main class="preview-pane">
-            <div class="card-render-area">
+            <div class="card-render-area" id="cardRenderArea">
                 <div id="cardPreview" class="card-frame rarity-common type-minion">
-                    <div class="card-header">
-                        <div class="mana-gem" id="previewMana">0</div>
-                        <div class="card-name-plate">
-                            <span id="previewName">New Hero</span>
-                        </div>
-                    </div>
+                    
+                    <!-- Layers -->
                     <div class="card-art-layer">
                         <img id="previewArt" src="" alt="" style="display:none;">
-                        <div id="previewArtPlaceholder">No Image</div>
+                        <div id="previewArtPlaceholder"></div>
                     </div>
-                    <div class="card-type-bar">
-                        <span id="previewTribe">General</span>
+                    <div class="card-overlay"></div>
+
+                    <!-- UI Content -->
+                    <div class="card-ui-layout">
+                        <div class="card-header-row">
+                            <div class="mana-gem" id="previewMana">0</div>
+                            <div class="name-ribbon">
+                                <span id="previewName">New Hero</span>
+                            </div>
+                            <div id="rarityGem" class="rarity-gem"></div>
+                        </div>
+
+                        <div class="art-window-spacer"></div>
+
+                        <div class="card-bottom-panel">
+                            <div class="type-ribbon">
+                                <span id="previewTribe">General</span>
+                            </div>
+
+                            <div class="card-text-box">
+                                <p id="previewText" class="rules-text"></p>
+                                <div class="flavor-separator"></div>
+                                <p id="previewFlavor" class="flavor-text"></p>
+                            </div>
+
+                            <div class="card-footer">
+                                <div class="stat-box attack">
+                                    <span id="previewAttack">0</span>
+                                </div>
+                                <div class="stat-box health">
+                                    <span id="previewHealth">1</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-text-box">
-                        <p id="previewText" class="rules-text"></p>
-                        <p id="previewFlavor" class="flavor-text"></p>
-                    </div>
-                    <div class="card-footer">
-                        <div class="stat-gem attack" id="previewAttack">0</div>
-                        <div class="stat-gem health" id="previewHealth">1</div>
-                    </div>
+                    
+                    <div class="card-glare"></div>
                 </div>
             </div>
 
             <div class="export-controls">
-                <button id="btnSaveImage" class="btn-primary">Download Image</button>
-                <button id="btnSaveJSON" class="btn-secondary">Save JSON</button>
+                <button id="btnSaveImage" class="btn-primary" data-i18n="ui_btn_download_img">Download Image</button>
+                <button id="btnSaveJSON" class="btn-secondary" data-i18n="ui_btn_save_json">Save JSON</button>
             </div>
 
             <div class="info-panel">
-                <h3>Balance Report</h3>
-                <div id="balanceLog">Adjust stats...</div>
+                <h3 data-i18n="ui_panel_balance">Balance Report</h3>
+                <div id="balanceLog" data-i18n="ui_log_default">Adjust stats...</div>
             </div>
         </main>
     </div>
@@ -142,65 +188,65 @@
     <div id="settingsModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Game Configuration</h2>
+                <h2 data-i18n="ui_modal_settings_title">Game Configuration</h2>
                 <span id="btnCloseSettings" class="close-modal">&times;</span>
             </div>
             <div class="modal-body">
                 <section class="settings-group">
-                    <h3>Presets</h3>
-                    <button id="btnLoadMidgard" class="btn-secondary">Reset to Midgard TCG</button>
+                    <h3 data-i18n="ui_settings_presets">Presets</h3>
+                    <button id="btnLoadMidgard" class="btn-secondary" data-i18n="ui_btn_reset_midgard">Reset to Midgard TCG</button>
                 </section>
                 <section class="settings-group">
-                    <h3>Tribe Manager</h3>
+                    <h3 data-i18n="ui_settings_tribes">Tribe Manager</h3>
                     <div id="settingsTribeList" class="tribe-list"></div>
                     <div class="add-tribe-row">
-                        <input type="text" id="newTribeName" placeholder="New Tribe Name">
+                        <input type="text" id="newTribeName" data-i18n-placeholder="ui_placeholder_new_tribe" placeholder="New Tribe Name">
                         <input type="color" id="newTribeColor" value="#ff0000">
-                        <button id="btnAddTribe" class="btn-primary">Add</button>
+                        <button id="btnAddTribe" class="btn-primary" data-i18n="ui_btn_add_tribe">Add</button>
                     </div>
                 </section>
             </div>
             <div class="modal-footer">
-                <button id="btnSaveSettings" class="btn-primary">Done</button>
+                <button id="btnSaveSettings" class="btn-primary" data-i18n="ui_btn_done">Done</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL 2: ABILITY BUILDER (New!) -->
+    <!-- MODAL 2: ABILITY BUILDER -->
     <div id="abilityModal" class="modal hidden">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h2>Create Ability</h2>
+                <h2 data-i18n="ui_modal_ab_title">Create Ability</h2>
                 <span id="btnCloseAbility" class="close-modal">&times;</span>
             </div>
             <div class="modal-body ability-builder-layout">
                 
                 <!-- 1. Flavor Name -->
                 <div class="form-group">
-                    <label>Flavor Name (Optional)</label>
-                    <input type="text" id="abModalName" placeholder="e.g. Fireball, Divine Blessing">
-                    <small style="color:#666">Appears in bold at the start of the text.</small>
+                    <label data-i18n="ui_ab_flavor_label">Flavor Name (Optional)</label>
+                    <input type="text" id="abModalName" data-i18n-placeholder="ui_ab_flavor_placeholder" placeholder="e.g. Fireball">
+                    <small style="color:#666" data-i18n="ui_ab_flavor_hint">Appears in bold at the start.</small>
                 </div>
 
                 <!-- 2. Logic Flow -->
                 <div class="logic-grid">
                     <!-- Trigger -->
                     <div class="logic-block">
-                        <label>1. Trigger (When?)</label>
+                        <label data-i18n="ui_ab_step_1">1. Trigger (When?)</label>
                         <select id="abModalTrigger"></select>
                         <p id="descTrigger" class="help-text">...</p>
                     </div>
 
                     <!-- Condition -->
                     <div class="logic-block">
-                        <label>2. Condition (If?)</label>
+                        <label data-i18n="ui_ab_step_2">2. Condition (If?)</label>
                         <select id="abModalCondition"></select>
                         <select id="abModalCondTribe" class="input-hidden mt-2"></select>
                     </div>
 
                     <!-- Effect -->
                     <div class="logic-block">
-                        <label>3. Effect (Do what?)</label>
+                        <label data-i18n="ui_ab_step_3">3. Effect (Do what?)</label>
                         <select id="abModalEffect"></select>
                         
                         <!-- Dynamic Effect Inputs -->
@@ -222,20 +268,20 @@
 
                     <!-- Target -->
                     <div class="logic-block">
-                        <label>4. Target (To whom?)</label>
+                        <label data-i18n="ui_ab_step_4">4. Target (To whom?)</label>
                         <select id="abModalTarget"></select>
                     </div>
                 </div>
 
                 <!-- Live Preview of Text -->
                 <div class="text-preview-box">
-                    <label>Text Preview:</label>
+                    <label data-i18n="ui_ab_preview_label">Text Preview:</label>
                     <p id="abModalPreviewText">...</p>
                 </div>
 
             </div>
             <div class="modal-footer">
-                <button id="btnConfirmAbility" class="btn-primary">Add Ability</button>
+                <button id="btnConfirmAbility" class="btn-primary" data-i18n="ui_btn_confirm_ab">Add Ability</button>
             </div>
         </div>
     </div>
